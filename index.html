@@ -1875,14 +1875,9 @@ function removeHwPhoto(key, ds){
 }
 
 function viewPhoto(key, ds){
-  const hw = (hwData[key]||{})[ds] || (hwLastData[key]||{})[ds];
-  if(!hw||!hw.photo) return;
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  overlay.onclick = () => overlay.remove();
-  overlay.innerHTML = `<img src="${hw.photo}" style="max-width:92vw;max-height:88vh;border-radius:16px;object-fit:contain;">
-    <button style="position:absolute;top:20px;right:20px;width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,0.2);color:white;font-size:20px;cursor:pointer">×</button>`;
-  document.body.appendChild(overlay);
+  const photo = getHwPhoto(key, ds) || getHwLastPhoto(key, ds);
+  if(!photo) return;
+  viewPhotoUrl(photo);
 }
 
 function openHwDetail(key, name, emoji, color){
@@ -2143,14 +2138,14 @@ function drawHwParent(){
             <textarea onchange="saveHwMemo('${info.id}','${ds}',this.value)" placeholder="카톡으로 받은 숙제 내용 입력..." rows="2"
               style="width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid #e8f0f8;font-size:12px;font-family:inherit;resize:none;color:#1a3a5c;background:white;box-sizing:border-box;margin-bottom:6px">${hw.memo||''}</textarea>
             <div style="display:flex;gap:6px;align-items:center">
-              ${hw.photo
-                ?`<img src="${hw.photo}" onclick="viewPhoto('${info.id}','${ds}')" style="width:48px;height:48px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid ${info.c}44">
-                   <button onclick="removePhoto('${info.id}','${ds}')" style="padding:4px 8px;border-radius:8px;border:none;background:#ffe0e0;color:#e05555;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">삭제</button>`
+              ${(()=>{ const p=getHwPhoto(info.id,ds); return p
+                ?`<img src="${p}" onclick="viewPhotoUrl('${p}')" style="width:48px;height:48px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid ${info.c}44">
+                   <button onclick="removeHwPhoto('${info.id}','${ds}');drawHwParent();" style="padding:4px 8px;border-radius:8px;border:none;background:#ffe0e0;color:#e05555;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">삭제</button>`
                 :`<label style="display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:9px;border:1.5px dashed #c8dce8;cursor:pointer;background:white">
                     <span style="font-size:13px">📷</span>
                     <span style="font-size:10px;color:#8aaac8;font-weight:700">사진 첨부</span>
                     <input type="file" accept="image/*" onchange="attachPhotoParent('${info.id}','${ds}',this)" style="display:none">
-                  </label>`}
+                  </label>`; })()}
               ${hw.status==='none'||!hw.status
                 ?`<button onclick="parentApproveHw('${info.id}','${ds}')" style="padding:6px 12px;border-radius:9px;border:none;background:linear-gradient(135deg,#2bc87a,#1aaa60);color:white;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;margin-left:auto">✅ 완료 처리</button>`:''}
             </div>
