@@ -1590,6 +1590,10 @@ function drawHwSubjects(){
     '영어학원':{id:'eng',  n:'영어학원', e:'📖', c:'#ffaa55', bg:'#fff8f0'},
     '수학학원':{id:'math', n:'수학학원', e:'📚', c:'#b07ef7', bg:'#f8f0ff'},
   };
+  // 부모 추가 항목도 포함
+  hwExtra.forEach(ex => {
+    HW_NAMES[ex.name] = {id:'extra_'+ex.name, n:ex.name, e:'✍️', c:'#ff7043', bg:'#fff4f0'};
+  });
 
   // 부모 추가 항목도 포함
   hwExtra.forEach(ex => {
@@ -1610,10 +1614,12 @@ function drawHwSubjects(){
       }
     });
   }
-  // 부모 추가 항목 (요일 전체)
+  // 부모 추가 항목 (저장된 요일만)
   hwExtra.forEach(ex => {
-    if(!found[ex.name]) found[ex.name] = new Set([0,1,2,3,4,5,6].filter(i => (SCH[i]||[]).some(it => it.name === ex.name)));
-    if(found[ex.name].size === 0) found[ex.name] = new Set([0,1,2,3,4,5,6]);
+    if(!found[ex.name]){
+      const days = ex.days || [0,1,2,3,4,5,6];
+      found[ex.name] = new Set(days);
+    }
   });
 
   const DN_KR = ['월','화','수','목','금','토','일'];
@@ -1691,15 +1697,22 @@ function openHwDetail2(key, name, emoji, color){
   const today = new Date().getDay();
   const todayIdx = today === 0 ? 6 : today - 1;
 
-  // 이번주 수업 있는 요일
+  // 이번주 수업 있는 요일 (extra는 저장된 요일 사용)
   const dayList = [];
-  for(let i = 0; i < 7; i++){
-    const items = SCH[i] || [];
-    const seen = new Set();
-    if(items.some(it => {
-      if(it.name === name && !seen.has(name)){ seen.add(name); return true; }
-      return false;
-    })) dayList.push(i);
+  if(key.startsWith('extra_')){
+    const exName = key.replace('extra_','');
+    const ex = hwExtra.find(e=>e.name===exName);
+    if(ex && ex.days) ex.days.forEach(d=>dayList.push(d));
+    else for(let i=0;i<7;i++) dayList.push(i);
+  } else {
+    for(let i = 0; i < 7; i++){
+      const items = SCH[i] || [];
+      const seen = new Set();
+      if(items.some(it => {
+        if(it.name === name && !seen.has(name)){ seen.add(name); return true; }
+        return false;
+      })) dayList.push(i);
+    }
   }
 
   // 이번주 카드 렌더
@@ -2009,9 +2022,12 @@ function drawHwParent(){
         }
       });
     }
-    // hwExtra는 전요일
+    // hwExtra는 저장된 요일만
     hwExtra.forEach(ex=>{
-      if(!found[ex.name]) found[ex.name]=new Set([0,1,2,3,4,5,6]);
+      if(!found[ex.name]){
+        const days = ex.days || [0,1,2,3,4,5,6];
+        found[ex.name] = new Set(days);
+      }
     });
 
     const keys2 = Object.keys(found).filter(nm=>found[nm].size>0);
@@ -2257,14 +2273,50 @@ function confirmHw(key, ds, approve){
 }
 
 function showHwAddPopup2(){
-  const name = prompt('추가할 숙제 항목 이름\n(예: 피아노, 태권도, 미술)');
-  if(!name||!name.trim()) return;
-  if(hwExtra.find(e=>e.name===name.trim())){ toast('이미 있는 항목이에요!'); return; }
-  hwExtra.push({name:name.trim()});
-  saveHwExtra();
-  drawHwParent();
-  drawHwSubjects();
-  toast('✅ '+name.trim()+' 숙제 항목 추가됐어요!');
+  const DN_KR = ['월','화','수','목','금','토','일'];
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:22px 22px 0 0;padding:20px;width:100%;max-width:480px">
+      <div style="font-size:15px;font-weight:800;color:#0d5a7a;margin-bottom:14px">➕ 숙제 항목 추가</div>
+
+      <div style="font-size:11px;color:#8aaac8;margin-bottom:6px">항목 이름</div>
+      <input id="hwAddName" type="text" placeholder="예: 피아노, 태권도, 미술" maxlength="10"
+        style="width:100%;padding:10px;border-radius:10px;border:1.5px solid #d4eaf5;font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:14px;outline:none">
+
+      <div style="font-size:11px;color:#8aaac8;margin-bottom:8px">수업 요일 선택</div>
+      <div style="display:flex;gap:6px;margin-bottom:16px">
+        ${DN_KR.map((d,i)=>`
+          <label style="flex:1;text-align:center">
+            <input type="checkbox" value="${i}" style="display:none" onchange="this.parentElement.style.background=this.checked?'#3a9bd5':'#f0f7ff';this.parentElement.style.color=this.checked?'white':'#5a8aa8'">
+            <div style="padding:8px 4px;border-radius:10px;background:#f0f7ff;color:#5a8aa8;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid #e0eef8"
+              onclick="const cb=this.previousElementSibling;cb.checked=!cb.checked;this.style.background=cb.checked?'#3a9bd5':'#f0f7ff';this.style.color=cb.checked?'white':'#5a8aa8';this.style.borderColor=cb.checked?'#3a9bd5':'#e0eef8'">${d}</div>
+          </label>`).join('')}
+      </div>
+
+      <button onclick="
+        const name=document.getElementById('hwAddName').value.trim();
+        if(!name){alert('이름을 입력해주세요');return;}
+        const days=[...document.querySelectorAll('#hwAddDayBox input:checked')].map(c=>parseInt(c.value));
+        if(!days.length){alert('요일을 선택해주세요');return;}
+        if(hwExtra.find(e=>e.name===name)){toast('이미 있는 항목이에요!');return;}
+        hwExtra.push({name,days});
+        saveHwExtra();
+        drawHwParent();
+        drawHwSubjects();
+        toast('✅ '+name+' 추가됐어요!');
+        this.closest('[style*=fixed]').remove();
+      " style="width:100%;padding:12px;border-radius:14px;border:none;background:linear-gradient(135deg,#3a9bd5,#2ec4a9);color:white;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+        확인
+      </button>
+    </div>`;
+
+  // 체크박스 id 추가
+  overlay.querySelector('div[style*="border-radius:22px"]').id = 'hwAddDayBox';
+  document.body.appendChild(overlay);
 }
 
 function removeHwExtra2(name){
