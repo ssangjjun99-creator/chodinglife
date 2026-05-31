@@ -1851,6 +1851,7 @@ function attachPhoto(key, ds, input){
   const file = input.files[0];
   if(!file) return;
   compressAndSavePhoto(key, ds, file, () => {
+    hwPhotos = JSON.parse(localStorage.getItem('chodinglife_hw_photos') || '{}');
     if(hwOpenCat) openHwDetail2(hwOpenCat.key, hwOpenCat.name, hwOpenCat.emoji, hwOpenCat.color);
   });
 }
@@ -1859,8 +1860,9 @@ function attachPhotoFromPopup(key, ds, input, overlay){
   const file = input.files[0];
   if(!file) return;
   compressAndSavePhoto(key, ds, file, () => {
-    // 팝업 새로고침
-    overlay.remove();
+    // 저장 후 메모리 데이터 다시 읽기
+    hwPhotos = JSON.parse(localStorage.getItem('chodinglife_hw_photos') || '{}');
+    if(overlay && overlay.parentNode) overlay.remove();
     drawHwParent();
   });
 }
@@ -2156,8 +2158,12 @@ function drawHwParent(){
 }
 
 function attachPhotoParent(key, ds, input){
-  attachPhoto(key, ds, input);
-  setTimeout(()=>drawHwParent(), 500);
+  const file = input.files[0];
+  if(!file) return;
+  compressAndSavePhoto(key, ds, file, () => {
+    hwPhotos = JSON.parse(localStorage.getItem('chodinglife_hw_photos') || '{}');
+    drawHwParent();
+  });
 }
 
 function parentApproveHw(key, ds){
