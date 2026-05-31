@@ -1760,6 +1760,14 @@ function openHwDetail2(key, name, emoji, color){
     </div>` : ''}`;
 }
 
+function toggleLastWeekOverview(btn, id, nm, emoji, color){
+  const sec = document.getElementById('lastOv_'+id);
+  if(!sec) return;
+  const isHidden = sec.style.display==='none' || !sec.style.display;
+  sec.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '📅 지난주 숨기기 ▴' : '📅 지난주 보기 ▾';
+}
+
 function toggleLastWeek(btn){
   const sec = document.getElementById('lastWeekSection');
   if(!sec) return;
@@ -1975,6 +1983,29 @@ function drawHwParent(){
               </div>`;
             }).join('')}
           </div>
+
+          <!-- 지난주 토글 -->
+          ${Object.keys(hwLastData[info.id]||{}).length>0?`
+          <button onclick="toggleLastWeekOverview(this,'${info.id}','${nm}','${info.e}','${info.c}')"
+            style="margin-top:6px;padding:5px 10px;border-radius:8px;border:1.5px solid #e8f0f8;background:white;color:#8aaac8;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">
+            📅 지난주 보기 ▾
+          </button>
+          <div id="lastOv_${info.id}" style="display:none;margin-top:6px;display:none">
+            <div style="font-size:10px;color:#8aaac8;margin-bottom:4px">지난주</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              ${Object.keys(hwLastData[info.id]||{}).map(ds=>{
+                const hw=hwLastData[info.id][ds]||{};
+                const dayIdx=parseInt(ds.replace('day_',''));
+                const icon=hw.status==='done'?'✅':hw.photo?'📷':hw.memo?'📝':'○';
+                const bg=hw.status==='done'?'#e8faf0':'#f8f8f8';
+                return `<div onclick="goToHwDay('${info.id}','${nm}','${info.e}','${info.c}','${ds}')"
+                  style="min-width:48px;padding:6px 8px;border-radius:10px;background:${bg};border:1.5px solid #e0e0e0;cursor:pointer;text-align:center;opacity:0.8">
+                  <div style="font-size:9px;font-weight:700;color:#8aaac8">${DN_KR[dayIdx]}</div>
+                  <div style="font-size:14px;margin-top:2px">${icon}</div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>`:''}
         </div>`;
       }).join('<div style="height:1px;background:#f0f7ff;margin:4px 0 12px"></div>');
     }
@@ -2054,12 +2085,93 @@ function parentApproveHw(key, ds){
 }
 
 function goToHwDay(key, name, emoji, color, ds){
-  // 아이 탭으로 전환하고 해당 숙제 상세로 이동
-  document.querySelectorAll('#page-homework .tb').forEach(t=>t.classList.remove('on'));
-  document.querySelectorAll('#page-homework .tb')[0].classList.add('on');
-  document.getElementById('hwC').style.display='block';
-  document.getElementById('hwP').style.display='none';
-  openHwDetail2(key, name, emoji, color);
+  // 팝업으로 해당 날짜 사진+메모 보여주기
+  const hw = (hwData[key]||{})[ds] || {};
+  const hwLast = (hwLastData[key]||{})[ds] || {};
+  const dayIdx = parseInt(ds.replace('day_',''));
+  const DN_KR = ['월','화','수','목','금','토','일'];
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+
+  const statusIcon = hw.status==='done'?'✅':hw.status==='pending'?'⏳':'📋';
+
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:22px 22px 0 0;padding:20px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="width:36px;height:36px;border-radius:12px;background:#f0f4ff;display:flex;align-items:center;justify-content:center;font-size:20px">${emoji}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:800;color:#0d5a7a">${name} · ${formatDateLabel(dayIdx)}</div>
+          <div style="font-size:11px;color:#8aaac8">${statusIcon} ${hw.status==='done'?'완료':hw.status==='pending'?'확인 중':'미완료'}</div>
+        </div>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="width:30px;height:30px;border-radius:50%;border:none;background:#f0f0f0;color:#888;font-size:16px;cursor:pointer">×</button>
+      </div>
+
+      <!-- 사진 -->
+      ${hw.photo
+        ?`<img src="${hw.photo}" onclick="viewPhotoUrl('${hw.photo}')" style="width:100%;max-height:200px;object-fit:contain;border-radius:12px;cursor:pointer;border:1.5px solid ${color}44;margin-bottom:10px">`
+        :`<label style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:20px;border:2px dashed #c8dce8;border-radius:12px;cursor:pointer;background:#fafcff;margin-bottom:10px">
+            <span style="font-size:28px">📷</span>
+            <span style="font-size:12px;color:#8aaac8;font-weight:700">부모가 사진 첨부</span>
+            <input type="file" accept="image/*" onchange="attachPhotoFromPopup('${key}','${ds}',this,this.closest('[style*=fixed]'))" style="display:none">
+          </label>`}
+
+      <!-- 메모 -->
+      <div style="font-size:11px;font-weight:700;color:#0d5a7a;margin-bottom:6px">숙제 내용</div>
+      <textarea onchange="saveHwMemoFromPopup('${key}','${ds}',this.value)" placeholder="카톡으로 받은 숙제 내용 입력..." rows="3"
+        style="width:100%;padding:10px;border-radius:10px;border:1.5px solid #e8f0f8;font-size:13px;font-family:inherit;resize:none;color:#1a3a5c;background:#fafcff;box-sizing:border-box;margin-bottom:10px">${hw.memo||''}</textarea>
+
+      <!-- 지난주 있으면 표시 -->
+      ${hwLast.memo||hwLast.photo?`
+      <div style="padding:10px;background:#f8f8f8;border-radius:10px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:#8aaac8;margin-bottom:6px">📅 지난주 같은 요일</div>
+        ${hwLast.photo?`<img src="${hwLast.photo}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;margin-bottom:4px">` :''}
+        ${hwLast.memo?`<div style="font-size:11px;color:#888">${hwLast.memo}</div>`:''}
+      </div>`:''}
+
+      <!-- 완료 처리 버튼 -->
+      ${hw.status!=='done'?`
+      <button onclick="parentApproveHw('${key}','${ds}');this.closest('[style*=fixed]').remove();drawHwParent();"
+        style="width:100%;padding:12px;border-radius:14px;border:none;background:linear-gradient(135deg,#2bc87a,#1aaa60);color:white;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+        ✅ 완료 처리 +20점
+      </button>`:`<div style="text-align:center;padding:10px;color:#2bc87a;font-weight:800;font-size:13px">✅ 이미 완료된 숙제예요!</div>`}
+    </div>`;
+
+  document.body.appendChild(overlay);
+}
+
+function attachPhotoFromPopup(key, ds, input, overlay){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    if(!hwData[key]) hwData[key]={};
+    if(!hwData[key][ds]) hwData[key][ds]={status:'none',memo:'',photo:''};
+    hwData[key][ds].photo = e.target.result;
+    saveHw();
+    overlay.remove();
+    drawHwParent();
+    toast('📷 사진 첨부됐어요!');
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveHwMemoFromPopup(key, ds, val){
+  if(!hwData[key]) hwData[key]={};
+  if(!hwData[key][ds]) hwData[key][ds]={status:'none',memo:'',photo:''};
+  hwData[key][ds].memo = val;
+  saveHw();
+  drawHwParent();
+}
+
+function viewPhotoUrl(url){
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick = () => overlay.remove();
+  overlay.innerHTML = `<img src="${url}" style="max-width:92vw;max-height:88vh;border-radius:16px;object-fit:contain;">
+    <button style="position:absolute;top:20px;right:20px;width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,0.2);color:white;font-size:20px;cursor:pointer">×</button>`;
+  document.body.appendChild(overlay);
 }
 
 function confirmHw(key, ds, approve){
