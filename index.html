@@ -2083,10 +2083,17 @@ function drawHwParent(){
                   const photo=getHwLastPhoto(info.id,ds);
                   const icon=hw.status==='done'?'✅':photo?'📷':hw.memo?'📝':'○';
                   const bg=hw.status==='done'?'#e8faf0':'#f8f8f8';
+                  // 지난주 날짜 계산
+                  const lastMon = new Date(getThisWeekMonday());
+                  lastMon.setDate(lastMon.getDate()-7);
+                  const lastDate = new Date(lastMon);
+                  lastDate.setDate(lastMon.getDate()+dayIdx);
+                  const dateLabel = (lastDate.getMonth()+1)+'/'+(lastDate.getDate());
                   return `<div onclick="goToHwDay('${info.id}','${nm}','${info.e}','${info.c}','${ds}')"
                     style="min-width:48px;padding:6px 8px;border-radius:10px;background:${bg};border:1.5px solid #e0e0e0;cursor:pointer;text-align:center;opacity:0.8">
                     <div style="font-size:9px;font-weight:700;color:#8aaac8">${DN_KR[dayIdx]}</div>
-                    <div style="font-size:14px;margin-top:4px">${icon}</div>
+                    <div style="font-size:10px;color:#aaa;margin-top:1px">${dateLabel}</div>
+                    <div style="font-size:14px;margin-top:2px">${icon}</div>
                   </div>`;
                 }).join('')}
               </div>
@@ -2169,9 +2176,10 @@ function parentApproveHw(key, ds){
 }
 
 function goToHwDay(key, name, emoji, color, ds){
-  // 팝업으로 해당 날짜 사진+메모 보여주기
   const hw = (hwData[key]||{})[ds] || {};
   const hwLast = (hwLastData[key]||{})[ds] || {};
+  const photo = getHwPhoto(key, ds);
+  const lastPhoto = getHwLastPhoto(key, ds);
   const dayIdx = parseInt(ds.replace('day_',''));
   const DN_KR = ['월','화','수','목','금','토','일'];
 
@@ -2193,11 +2201,14 @@ function goToHwDay(key, name, emoji, color, ds){
       </div>
 
       <!-- 사진 -->
-      ${hw.photo
-        ?`<img src="${hw.photo}" onclick="viewPhotoUrl('${hw.photo}')" style="width:100%;max-height:200px;object-fit:contain;border-radius:12px;cursor:pointer;border:1.5px solid ${color}44;margin-bottom:10px">`
+      ${photo
+        ?`<div style="position:relative;margin-bottom:10px">
+            <img src="${photo}" onclick="viewPhotoUrl('${photo}')" style="width:100%;max-height:200px;object-fit:contain;border-radius:12px;cursor:pointer;border:1.5px solid ${color}44">
+            <button onclick="removeHwPhoto('${key}','${ds}');this.closest('[style*=fixed]').remove();drawHwParent();" style="position:absolute;top:6px;right:6px;padding:4px 8px;border-radius:8px;border:none;background:rgba(0,0,0,0.5);color:white;font-size:11px;cursor:pointer">삭제</button>
+          </div>`
         :`<label style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:20px;border:2px dashed #c8dce8;border-radius:12px;cursor:pointer;background:#fafcff;margin-bottom:10px">
             <span style="font-size:28px">📷</span>
-            <span style="font-size:12px;color:#8aaac8;font-weight:700">부모가 사진 첨부</span>
+            <span style="font-size:12px;color:#8aaac8;font-weight:700">사진 첨부 (카메라/갤러리)</span>
             <input type="file" accept="image/*" onchange="attachPhotoFromPopup('${key}','${ds}',this,this.closest('[style*=fixed]'))" style="display:none">
           </label>`}
 
@@ -2207,10 +2218,10 @@ function goToHwDay(key, name, emoji, color, ds){
         style="width:100%;padding:10px;border-radius:10px;border:1.5px solid #e8f0f8;font-size:13px;font-family:inherit;resize:none;color:#1a3a5c;background:#fafcff;box-sizing:border-box;margin-bottom:10px">${hw.memo||''}</textarea>
 
       <!-- 지난주 있으면 표시 -->
-      ${hwLast.memo||hwLast.photo?`
+      ${hwLast.memo||lastPhoto?`
       <div style="padding:10px;background:#f8f8f8;border-radius:10px;margin-bottom:10px">
         <div style="font-size:11px;font-weight:700;color:#8aaac8;margin-bottom:6px">📅 지난주 같은 요일</div>
-        ${hwLast.photo?`<img src="${hwLast.photo}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;margin-bottom:4px">` :''}
+        ${lastPhoto?`<img src="${lastPhoto}" onclick="viewPhotoUrl('${lastPhoto}')" style="width:60px;height:60px;object-fit:cover;border-radius:8px;margin-bottom:4px;cursor:pointer">` :''}
         ${hwLast.memo?`<div style="font-size:11px;color:#888">${hwLast.memo}</div>`:''}
       </div>`:''}
 
@@ -2274,49 +2285,64 @@ function confirmHw(key, ds, approve){
 
 function showHwAddPopup2(){
   const DN_KR = ['월','화','수','목','금','토','일'];
-
   const overlay = document.createElement('div');
+  overlay.id = 'hwAddOverlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center;';
   overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
 
   overlay.innerHTML = `
-    <div style="background:white;border-radius:22px 22px 0 0;padding:20px;width:100%;max-width:480px">
+    <div id="hwAddDayBox" style="background:white;border-radius:22px 22px 0 0;padding:20px;width:100%;max-width:480px">
       <div style="font-size:15px;font-weight:800;color:#0d5a7a;margin-bottom:14px">➕ 숙제 항목 추가</div>
-
       <div style="font-size:11px;color:#8aaac8;margin-bottom:6px">항목 이름</div>
       <input id="hwAddName" type="text" placeholder="예: 피아노, 태권도, 미술" maxlength="10"
         style="width:100%;padding:10px;border-radius:10px;border:1.5px solid #d4eaf5;font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:14px;outline:none">
-
-      <div style="font-size:11px;color:#8aaac8;margin-bottom:8px">수업 요일 선택</div>
+      <div style="font-size:11px;color:#8aaac8;margin-bottom:8px">수업 요일 선택 (복수 선택 가능)</div>
       <div style="display:flex;gap:6px;margin-bottom:16px">
         ${DN_KR.map((d,i)=>`
-          <label style="flex:1;text-align:center">
-            <input type="checkbox" value="${i}" style="display:none" onchange="this.parentElement.style.background=this.checked?'#3a9bd5':'#f0f7ff';this.parentElement.style.color=this.checked?'white':'#5a8aa8'">
-            <div style="padding:8px 4px;border-radius:10px;background:#f0f7ff;color:#5a8aa8;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid #e0eef8"
-              onclick="const cb=this.previousElementSibling;cb.checked=!cb.checked;this.style.background=cb.checked?'#3a9bd5':'#f0f7ff';this.style.color=cb.checked?'white':'#5a8aa8';this.style.borderColor=cb.checked?'#3a9bd5':'#e0eef8'">${d}</div>
-          </label>`).join('')}
+          <div id="hwDay_${i}" onclick="toggleHwDay(${i})"
+            style="flex:1;padding:10px 4px;border-radius:10px;background:#f0f7ff;color:#5a8aa8;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid #e0eef8;text-align:center">
+            ${d}
+          </div>`).join('')}
       </div>
-
-      <button onclick="
-        const name=document.getElementById('hwAddName').value.trim();
-        if(!name){alert('이름을 입력해주세요');return;}
-        const days=[...document.querySelectorAll('#hwAddDayBox input:checked')].map(c=>parseInt(c.value));
-        if(!days.length){alert('요일을 선택해주세요');return;}
-        if(hwExtra.find(e=>e.name===name)){toast('이미 있는 항목이에요!');return;}
-        hwExtra.push({name,days});
-        saveHwExtra();
-        drawHwParent();
-        drawHwSubjects();
-        toast('✅ '+name+' 추가됐어요!');
-        this.closest('[style*=fixed]').remove();
-      " style="width:100%;padding:12px;border-radius:14px;border:none;background:linear-gradient(135deg,#3a9bd5,#2ec4a9);color:white;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+      <button onclick="confirmHwAdd()" style="width:100%;padding:12px;border-radius:14px;border:none;background:linear-gradient(135deg,#3a9bd5,#2ec4a9);color:white;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
         확인
       </button>
     </div>`;
 
-  // 체크박스 id 추가
-  overlay.querySelector('div[style*="border-radius:22px"]').id = 'hwAddDayBox';
   document.body.appendChild(overlay);
+}
+
+let hwAddSelectedDays = [];
+
+function toggleHwDay(i){
+  const el = document.getElementById('hwDay_'+i);
+  if(!el) return;
+  const idx = hwAddSelectedDays.indexOf(i);
+  if(idx >= 0){
+    hwAddSelectedDays.splice(idx, 1);
+    el.style.background = '#f0f7ff';
+    el.style.color = '#5a8aa8';
+    el.style.borderColor = '#e0eef8';
+  } else {
+    hwAddSelectedDays.push(i);
+    el.style.background = '#3a9bd5';
+    el.style.color = 'white';
+    el.style.borderColor = '#3a9bd5';
+  }
+}
+
+function confirmHwAdd(){
+  const name = document.getElementById('hwAddName')?.value.trim();
+  if(!name){ toast('이름을 입력해주세요!'); return; }
+  if(!hwAddSelectedDays.length){ toast('요일을 선택해주세요!'); return; }
+  if(hwExtra.find(e=>e.name===name)){ toast('이미 있는 항목이에요!'); return; }
+  hwExtra.push({name, days:[...hwAddSelectedDays].sort()});
+  hwAddSelectedDays = [];
+  saveHwExtra();
+  document.getElementById('hwAddOverlay')?.remove();
+  drawHwParent();
+  drawHwSubjects();
+  toast('✅ '+name+' 추가됐어요!');
 }
 
 function removeHwExtra2(name){
