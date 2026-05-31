@@ -1479,18 +1479,53 @@ function checkHwWeekReset(){
 
 checkHwWeekReset();
 
+// 이전 버전 데이터 정리
+localStorage.removeItem('chodinglife_hw_v1');
+
 let hwData = JSON.parse(localStorage.getItem('chodinglife_hw_current') || '{}');
 let hwLastData = JSON.parse(localStorage.getItem('chodinglife_hw_last') || '{}');
+
+// 사진은 별도 저장소 (용량 분리)
+let hwPhotos = JSON.parse(localStorage.getItem('chodinglife_hw_photos') || '{}');
+let hwLastPhotos = JSON.parse(localStorage.getItem('chodinglife_hw_photos_last') || '{}');
 
 // 부모가 추가한 숙제 항목
 let hwExtra = JSON.parse(localStorage.getItem('chodinglife_hw_extra') || '[]');
 
 function saveHw(){
-  localStorage.setItem('chodinglife_hw_current', JSON.stringify(hwData));
+  // 사진 제외하고 저장
+  const noPhoto = {};
+  Object.keys(hwData).forEach(k => {
+    noPhoto[k] = {};
+    Object.keys(hwData[k]).forEach(ds => {
+      const {photo, ...rest} = hwData[k][ds];
+      noPhoto[k][ds] = rest;
+    });
+  });
+  localStorage.setItem('chodinglife_hw_current', JSON.stringify(noPhoto));
 }
+
+function saveHwPhotos(){
+  try {
+    localStorage.setItem('chodinglife_hw_photos', JSON.stringify(hwPhotos));
+  } catch(e) {
+    // 저장공간 부족시 가장 오래된 사진 삭제
+    const keys = Object.keys(hwPhotos);
+    if(keys.length > 0){
+      delete hwPhotos[keys[0]];
+      try { localStorage.setItem('chodinglife_hw_photos', JSON.stringify(hwPhotos)); } catch(e2){}
+    }
+    toast('⚠️ 저장 공간 부족! 이전 사진 일부가 삭제됐어요.');
+  }
+}
+
 function saveHwExtra(){
   localStorage.setItem('chodinglife_hw_extra', JSON.stringify(hwExtra));
 }
+
+// 사진 가져오기 (현재주 + 지난주)
+function getHwPhoto(key, ds){ return hwPhotos[key+'_'+ds] || ''; }
+function getHwLastPhoto(key, ds){ return hwLastPhotos[key+'_'+ds] || ''; }
 
 // 이번주 날짜 배열 (월~일) 반환
 function getThisWeekDates(){
@@ -1670,7 +1705,8 @@ function openHwDetail2(key, name, emoji, color){
   // 이번주 카드 렌더
   function renderDayCard(dayIdx, data, isLast){
     const ds = 'day_' + dayIdx;
-    const hw = (data[key]||{})[ds] || {status:'none', memo:'', photo:''};
+    const hw = (data[key]||{})[ds] || {status:'none', memo:''};
+    const photo = isLast ? getHwLastPhoto(key,ds) : getHwPhoto(key,ds);
     const isToday = !isLast && dayIdx === todayIdx;
     const statusColor = hw.status==='done' ? '#2bc87a' : hw.status==='pending' ? '#ffaa55' : '#c8dce8';
     const statusText = hw.status==='done' ? '✅ 완료' : hw.status==='pending' ? '⏳ 확인 중' : '📋 미완료';
@@ -1695,12 +1731,12 @@ function openHwDetail2(key, name, emoji, color){
           :''}
       </div>
 
-      <!-- 사진 첨부 -->
+      <!-- 사진 -->
       <div style="margin-bottom:8px">
-        ${hw.photo
+        ${photo
           ?`<div style="position:relative;display:inline-block">
-              <img src="${hw.photo}" onclick="viewPhoto('${key}','${ds}')" style="width:80px;height:80px;object-fit:cover;border-radius:10px;cursor:pointer;border:2px solid ${color}44">
-              ${!isLast?`<button onclick="removePhoto('${key}','${ds}')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#e05555;color:white;font-size:11px;cursor:pointer;font-family:inherit">×</button>`:''}
+              <img src="${photo}" onclick="viewPhotoUrl('${photo}')" style="width:80px;height:80px;object-fit:cover;border-radius:10px;cursor:pointer;border:2px solid ${color}44">
+              ${!isLast?`<button onclick="removeHwPhoto('${key}','${ds}')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#e05555;color:white;font-size:11px;cursor:pointer">×</button>`:''}
             </div>`
           :!isLast
           ?`<label style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:10px;border:1.5px dashed #c8dce8;cursor:pointer;background:#fafcff">
@@ -1773,7 +1809,7 @@ function compressAndSavePhoto(key, ds, file, onDone){
   reader.onload = e => {
     const img = new Image();
     img.onload = () => {
-      const MAX = 800;
+      const MAX = 600;
       let w = img.width, h = img.height;
       if(w > MAX || h > MAX){
         if(w > h){ h = Math.round(h*MAX/w); w = MAX; }
@@ -1782,17 +1818,16 @@ function compressAndSavePhoto(key, ds, file, onDone){
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      const compressed = canvas.toDataURL('image/jpeg', 0.7);
-      if(!hwData[key]) hwData[key] = {};
-      if(!hwData[key][ds]) hwData[key][ds] = {status:'none', memo:'', photo:''};
-      hwData[key][ds].photo = compressed;
-      try {
-        saveHw();
-        toast('📷 사진이 저장됐어요! ✅');
-        if(onDone) onDone();
-      } catch(err) {
-        toast('⚠️ 저장 공간 부족! 이전 사진을 삭제해주세요.');
-      }
+      const compressed = canvas.toDataURL('image/jpeg', 0.6);
+      hwPhotos[key+'_'+ds] = compressed;
+      saveHwPhotos();
+      // hwData에도 photo 플래그만 저장
+      if(!hwData[key]) hwData[key]={};
+      if(!hwData[key][ds]) hwData[key][ds]={status:'none',memo:''};
+      hwData[key][ds].hasPhoto = true;
+      saveHw();
+      toast('📷 사진이 저장됐어요! ✅');
+      if(onDone) onDone();
     };
     img.src = e.target.result;
   };
@@ -1817,11 +1852,13 @@ function attachPhotoFromPopup(key, ds, input, overlay){
   });
 }
 
-function removePhoto(key, ds){
-  if(!hwData[key]||!hwData[key][ds]) return;
-  hwData[key][ds].photo = '';
+function removeHwPhoto(key, ds){
+  delete hwPhotos[key+'_'+ds];
+  saveHwPhotos();
+  if(hwData[key]&&hwData[key][ds]) hwData[key][ds].hasPhoto = false;
   saveHw();
-  openHwDetail2(hwOpenCat.key, hwOpenCat.name, hwOpenCat.emoji, hwOpenCat.color);
+  if(hwOpenCat) openHwDetail2(hwOpenCat.key, hwOpenCat.name, hwOpenCat.emoji, hwOpenCat.color);
+  toast('사진 삭제됐어요!');
 }
 
 function viewPhoto(key, ds){
@@ -1959,7 +1996,7 @@ function drawHwParent(){
       HW_NAMES[ex.name] = {id:'extra_'+ex.name, e:'✍️', c:'#ff7043'};
     });
 
-    // 각 카테고리별 요일 수집
+    // SCH에서 수집
     const found = {};
     for(let i=0;i<7;i++){
       const items = SCH[i]||[];
@@ -1972,69 +2009,74 @@ function drawHwParent(){
         }
       });
     }
+    // hwExtra는 전요일
+    hwExtra.forEach(ex=>{
+      if(!found[ex.name]) found[ex.name]=new Set([0,1,2,3,4,5,6]);
+    });
 
-    const keys = Object.keys(found).filter(nm=>found[nm].size>0);
+    const keys2 = Object.keys(found).filter(nm=>found[nm].size>0);
 
-    if(!keys.length){
-      overview.innerHTML=`<div style="text-align:center;padding:16px;color:#8aaac8;font-size:12px">스케쥴에 학교/학원 설정하면 여기 보여요</div>`;
-    } else {
-      overview.innerHTML = keys.map(nm=>{
-        const info = HW_NAMES[nm];
-        const dayList=[...found[nm]].sort((a,b)=>a-b);
-        return `
-        <div style="margin-bottom:14px">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-            <span style="font-size:14px">${info.e}</span>
-            <span style="font-size:13px;font-weight:800;color:#0d5a7a">${nm}</span>
-          </div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap">
-            ${dayList.map(dayIdx=>{
-              const ds='day_'+dayIdx;
-              const hw=(hwData[info.id]||{})[ds]||{};
-              const hasPhoto=!!hw.photo;
-              const hasMemo=!!hw.memo;
-              const isToday=dayIdx===todayIdx;
-
-              let bg='#f0f7ff', icon='', border='#e0eef8';
-              if(hw.status==='done'){bg='#e8faf0';icon='✅';border='#2bc87a';}
-              else if(hw.status==='pending'){bg='#fff8e1';icon='⏳';border='#ffaa55';}
-              else if(hasPhoto||hasMemo){bg='#f0f4ff';icon=hasPhoto?'📷':'📝';border=info.c;}
-              if(isToday) border=info.c;
-
-              return `<div onclick="goToHwDay('${info.id}','${nm}','${info.e}','${info.c}','${ds}')"
-                style="min-width:48px;padding:6px 8px;border-radius:10px;background:${bg};border:2px solid ${border};cursor:pointer;text-align:center">
-                <div style="font-size:9px;font-weight:700;color:#5a8aa8">${DN_KR[dayIdx]}</div>
-                <div style="font-size:10px;color:#888;margin-top:1px">${formatDateLabel(dayIdx).split(' ')[0]}</div>
-                <div style="font-size:14px;margin-top:2px">${icon||'○'}</div>
-              </div>`;
-            }).join('')}
-          </div>
-
-          <!-- 지난주 토글 -->
-          ${Object.keys(hwLastData[info.id]||{}).length>0?`
-          <button onclick="toggleLastWeekOverview(this,'${info.id}','${nm}','${info.e}','${info.c}')"
-            style="margin-top:6px;padding:5px 10px;border-radius:8px;border:1.5px solid #e8f0f8;background:white;color:#8aaac8;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">
-            📅 지난주 보기 ▾
-          </button>
-          <div id="lastOv_${info.id}" style="display:none;margin-top:6px;display:none">
-            <div style="font-size:10px;color:#8aaac8;margin-bottom:4px">지난주</div>
+    overview.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:11px;color:#8aaac8">요일 눌러서 내용 확인/입력</div>
+        <button onclick="showHwAddPopup2()" style="padding:5px 12px;border-radius:9px;border:none;background:linear-gradient(135deg,#3a9bd5,#2ec4a9);color:white;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">+ 항목 추가</button>
+      </div>
+      ${!keys2.length
+        ?`<div style="text-align:center;padding:16px;color:#8aaac8;font-size:12px">스케쥴에 학교/학원 설정하면 여기 보여요</div>`
+        :keys2.map(nm=>{
+          const info=HW_NAMES[nm];
+          const dayList=[...found[nm]].sort((a,b)=>a-b);
+          const isExtra = nm !== '학교' && nm !== '영어학원' && nm !== '수학학원';
+          return `
+          <div style="margin-bottom:14px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <span style="font-size:14px">${info.e}</span>
+              <span style="font-size:13px;font-weight:800;color:#0d5a7a;flex:1">${nm}</span>
+              ${isExtra?`<button onclick="removeHwExtra2('${nm}')" style="padding:2px 8px;border-radius:7px;border:none;background:#ffe0e0;color:#e05555;font-size:10px;cursor:pointer;font-family:inherit">삭제</button>`:''}
+            </div>
             <div style="display:flex;gap:4px;flex-wrap:wrap">
-              ${Object.keys(hwLastData[info.id]||{}).map(ds=>{
-                const hw=hwLastData[info.id][ds]||{};
-                const dayIdx=parseInt(ds.replace('day_',''));
-                const icon=hw.status==='done'?'✅':hw.photo?'📷':hw.memo?'📝':'○';
-                const bg=hw.status==='done'?'#e8faf0':'#f8f8f8';
+              ${dayList.map(dayIdx=>{
+                const ds='day_'+dayIdx;
+                const hw=(hwData[info.id]||{})[ds]||{};
+                const photo=getHwPhoto(info.id,ds);
+                const isToday=dayIdx===todayIdx;
+                let bg='#f0f7ff',icon='',border='#e0eef8';
+                if(hw.status==='done'){bg='#e8faf0';icon='✅';border='#2bc87a';}
+                else if(hw.status==='pending'){bg='#fff8e1';icon='⏳';border='#ffaa55';}
+                else if(photo||hw.memo){bg='#f0f4ff';icon=photo?'📷':'📝';border=info.c;}
+                if(isToday) border=info.c;
                 return `<div onclick="goToHwDay('${info.id}','${nm}','${info.e}','${info.c}','${ds}')"
-                  style="min-width:48px;padding:6px 8px;border-radius:10px;background:${bg};border:1.5px solid #e0e0e0;cursor:pointer;text-align:center;opacity:0.8">
-                  <div style="font-size:9px;font-weight:700;color:#8aaac8">${DN_KR[dayIdx]}</div>
-                  <div style="font-size:14px;margin-top:2px">${icon}</div>
+                  style="min-width:48px;padding:6px 8px;border-radius:10px;background:${bg};border:2px solid ${border};cursor:pointer;text-align:center">
+                  <div style="font-size:9px;font-weight:700;color:#5a8aa8">${DN_KR[dayIdx]}</div>
+                  <div style="font-size:10px;color:#888;margin-top:1px">${formatDateLabel(dayIdx).split(' ')[0]}</div>
+                  <div style="font-size:14px;margin-top:2px">${icon||'○'}</div>
                 </div>`;
               }).join('')}
             </div>
-          </div>`:''}
-        </div>`;
-      }).join('<div style="height:1px;background:#f0f7ff;margin:4px 0 12px"></div>');
-    }
+            <!-- 지난주 토글 (항상 표시) -->
+            <button onclick="toggleLastWeekOverview(this,'${info.id}','${nm}','${info.e}','${info.c}')"
+              style="margin-top:6px;padding:5px 10px;border-radius:8px;border:1.5px solid #e8f0f8;background:white;color:#8aaac8;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">
+              📅 지난주 보기 ▾
+            </button>
+            <div id="lastOv_${info.id}" style="display:none;margin-top:6px">
+              <div style="font-size:10px;color:#8aaac8;margin-bottom:4px">지난주</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap">
+                ${dayList.map(dayIdx=>{
+                  const ds='day_'+dayIdx;
+                  const hw=(hwLastData[info.id]||{})[ds]||{};
+                  const photo=getHwLastPhoto(info.id,ds);
+                  const icon=hw.status==='done'?'✅':photo?'📷':hw.memo?'📝':'○';
+                  const bg=hw.status==='done'?'#e8faf0':'#f8f8f8';
+                  return `<div onclick="goToHwDay('${info.id}','${nm}','${info.e}','${info.c}','${ds}')"
+                    style="min-width:48px;padding:6px 8px;border-radius:10px;background:${bg};border:1.5px solid #e0e0e0;cursor:pointer;text-align:center;opacity:0.8">
+                    <div style="font-size:9px;font-weight:700;color:#8aaac8">${DN_KR[dayIdx]}</div>
+                    <div style="font-size:14px;margin-top:4px">${icon}</div>
+                  </div>`;
+                }).join('')}
+              </div>
+            </div>
+          </div>`;
+        }).join('<div style="height:1px;background:#f0f7ff;margin:4px 0 12px"></div>')}`;
   }
 
   // ── 부모 직접 입력 ──
@@ -2214,15 +2256,27 @@ function confirmHw(key, ds, approve){
   drawHwParent();
 }
 
-function showHwAddPopup(){
-  const name = prompt('추가할 숙제 항목 이름\n(예: 피아노, 축구교실)');
+function showHwAddPopup2(){
+  const name = prompt('추가할 숙제 항목 이름\n(예: 피아노, 태권도, 미술)');
   if(!name||!name.trim()) return;
   if(hwExtra.find(e=>e.name===name.trim())){ toast('이미 있는 항목이에요!'); return; }
   hwExtra.push({name:name.trim()});
   saveHwExtra();
   drawHwParent();
   drawHwSubjects();
-  toast('✅ 숙제 항목 추가됐어요!');
+  toast('✅ '+name.trim()+' 숙제 항목 추가됐어요!');
+}
+
+function removeHwExtra2(name){
+  hwExtra = hwExtra.filter(e=>e.name!==name);
+  saveHwExtra();
+  drawHwParent();
+  drawHwSubjects();
+  toast('삭제됐어요!');
+}
+
+function showHwAddPopup(){
+  showHwAddPopup2();
 }
 
 function removeHwExtra(idx){
