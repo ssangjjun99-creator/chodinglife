@@ -282,15 +282,6 @@ body{background:#e8f4ff;}
         <div id="hwOverview"></div>
       </div>
 
-      <!-- 부모가 숙제 직접 입력 -->
-      <div style="margin:10px 14px 0;background:white;border-radius:18px;padding:14px 16px;box-shadow:0 2px 10px rgba(80,140,200,0.08)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:13px;font-weight:800;color:#0d5a7a">✏️ 부모 직접 입력</div>
-          <div style="font-size:11px;color:#8aaac8">카톡 숙제를 여기 기록해요</div>
-        </div>
-        <div id="hwParentInputArea"></div>
-      </div>
-
       <!-- 보너스 포인트 -->
       <div style="margin:10px 14px 0;background:white;border-radius:18px;padding:14px 16px;box-shadow:0 2px 10px rgba(80,140,200,0.08)">
         <div style="font-size:12px;font-weight:800;color:#0d5a7a;margin-bottom:10px">🌟 보너스 포인트</div>
@@ -1776,19 +1767,54 @@ function toggleLastWeek(btn){
   btn.textContent = isHidden ? '📅 지난주 기록 숨기기 ▴' : '📅 지난주 기록 보기 ▾';
 }
 
+// 사진 압축 저장 (localStorage 용량 절약)
+function compressAndSavePhoto(key, ds, file, onDone){
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if(w > MAX || h > MAX){
+        if(w > h){ h = Math.round(h*MAX/w); w = MAX; }
+        else { w = Math.round(w*MAX/h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const compressed = canvas.toDataURL('image/jpeg', 0.7);
+      if(!hwData[key]) hwData[key] = {};
+      if(!hwData[key][ds]) hwData[key][ds] = {status:'none', memo:'', photo:''};
+      hwData[key][ds].photo = compressed;
+      try {
+        saveHw();
+        toast('📷 사진이 저장됐어요! ✅');
+        if(onDone) onDone();
+      } catch(err) {
+        toast('⚠️ 저장 공간 부족! 이전 사진을 삭제해주세요.');
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function attachPhoto(key, ds, input){
   const file = input.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    if(!hwData[key]) hwData[key] = {};
-    if(!hwData[key][ds]) hwData[key][ds] = {status:'none', memo:'', photo:''};
-    hwData[key][ds].photo = e.target.result;
-    saveHw();
-    openHwDetail2(hwOpenCat.key, hwOpenCat.name, hwOpenCat.emoji, hwOpenCat.color);
-    toast('📷 사진 첨부됐어요!');
-  };
-  reader.readAsDataURL(file);
+  compressAndSavePhoto(key, ds, file, () => {
+    if(hwOpenCat) openHwDetail2(hwOpenCat.key, hwOpenCat.name, hwOpenCat.emoji, hwOpenCat.color);
+  });
+}
+
+function attachPhotoFromPopup(key, ds, input, overlay){
+  const file = input.files[0];
+  if(!file) return;
+  compressAndSavePhoto(key, ds, file, () => {
+    // 팝업 새로고침
+    overlay.remove();
+    drawHwParent();
+  });
 }
 
 function removePhoto(key, ds){
