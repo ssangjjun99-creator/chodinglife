@@ -2085,16 +2085,21 @@ function drawHwParent(){
                 const hw=(hwData[info.id]||{})[ds]||{};
                 const photo=getHwPhoto(info.id,ds);
                 const isToday=dayIdx===todayIdx;
-                let bg='#f0f7ff',icon='',border='#e0eef8';
-                if(hw.status==='done'){bg='#e8faf0';icon='✅';border='#2bc87a';}
-                else if(hw.status==='pending'){bg='#fff8e1';icon='⏳';border='#ffaa55';}
-                else if(photo||hw.memo){bg='#f0f4ff';icon=photo?'📷':'📝';border=info.c;}
-                if(isToday) border=info.c;
+                const isDone=hw.status==='done';
+                const isPending=hw.status==='pending';
+                let bg='#f0f7ff', border='#e0eef8';
+                if(isDone){bg='#f0fdf4';}
+                else if(isPending){bg='#fff8e1';border='#ffaa55';}
+                else if(photo||hw.memo){bg='#f0f4ff';border=info.c;}
+                if(isToday&&!isDone) border=info.c;
+                // 아이콘: 사진있으면 📷, 없으면 상태별
+                const icon = photo?'📷':isPending?'⏳':isDone?'':'○';
                 return `<div onclick="goToHwDay('${info.id}','${nm}','${info.e}','${info.c}','${ds}')"
-                  style="min-width:48px;padding:6px 8px;border-radius:10px;background:${bg};border:2px solid ${border};cursor:pointer;text-align:center">
+                  style="min-width:48px;padding:6px 8px;border-radius:10px;background:${bg};border:2px solid ${border};cursor:pointer;text-align:center;position:relative;overflow:hidden;${isDone?'border-left:4px solid #2bc87a;':''}">
+                  ${isDone?`<div style="position:absolute;top:3px;left:3px;font-size:9px;line-height:1">✅</div>`:''}
                   <div style="font-size:9px;font-weight:700;color:#5a8aa8">${DN_KR[dayIdx]}</div>
                   <div style="font-size:10px;color:#888;margin-top:1px">${formatDateLabel(dayIdx).split(' ')[0]}</div>
-                  <div style="font-size:14px;margin-top:2px">${icon||'○'}</div>
+                  <div style="font-size:14px;margin-top:2px">${icon}</div>
                 </div>`;
               }).join('')}
             </div>
