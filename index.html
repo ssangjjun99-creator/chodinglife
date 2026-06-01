@@ -1752,11 +1752,10 @@ function openHwDetail2(key, name, emoji, color){
               ${!isLast?`<button onclick="removeHwPhoto('${key}','${ds}')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#e05555;color:white;font-size:11px;cursor:pointer">×</button>`:''}
             </div>`
           :!isLast
-          ?`<label style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:10px;border:1.5px dashed #c8dce8;cursor:pointer;background:#fafcff">
+          ?`<button onclick="triggerChildPhoto('${key}','${ds}')" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:10px;border:1.5px dashed #c8dce8;cursor:pointer;background:#fafcff;font-family:inherit;border-style:dashed;">
               <span style="font-size:14px">📷</span>
               <span style="font-size:11px;color:#8aaac8;font-weight:700">사진 첨부</span>
-              <input type="file" accept="image/*" onchange="attachPhoto('${key}','${ds}',this)" style="display:none">
-            </label>`
+            </button>`
           :'<span style="font-size:11px;color:#c8dce8">사진 없음</span>'}
       </div>
 
@@ -1845,6 +1844,28 @@ function compressAndSavePhoto(key, ds, file, onDone){
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function triggerChildPhoto(key, ds){
+  const old = document.getElementById('_childPhotoInput');
+  if(old) old.remove();
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.id = '_childPhotoInput';
+  inp.style.cssText = 'position:fixed;top:-999px;left:-999px;opacity:0;';
+  inp.onchange = () => {
+    const file = inp.files[0];
+    if(!file){ inp.remove(); return; }
+    compressAndSavePhoto(key, ds, file, () => {
+      hwPhotos = JSON.parse(localStorage.getItem('chodinglife_hw_photos') || '{}');
+      inp.remove();
+      if(hwOpenCat) openHwDetail2(hwOpenCat.key, hwOpenCat.name, hwOpenCat.emoji, hwOpenCat.color);
+      toast('📷 사진이 저장됐어요! ✅');
+    });
+  };
+  document.body.appendChild(inp);
+  inp.click();
 }
 
 function attachPhoto(key, ds, input){
@@ -2188,6 +2209,8 @@ function parentApproveHw(key, ds){
 }
 
 function goToHwDay(key, name, emoji, color, ds){
+  // 팝업 재오픈용 정보 저장
+  window._hwParentPopupInfo = {k:key, nm:name, em:emoji, cl:color};
   const hw = (hwData[key]||{})[ds] || {};
   const hwLast = (hwLastData[key]||{})[ds] || {};
   const photo = getHwPhoto(key, ds);
@@ -2217,13 +2240,12 @@ function goToHwDay(key, name, emoji, color, ds){
       ${photo
         ?`<div style="position:relative;margin-bottom:10px">
             <img src="${photo}" onclick="viewPhotoUrl('${photo}')" style="width:100%;max-height:200px;object-fit:contain;border-radius:12px;cursor:pointer;border:1.5px solid ${color}44">
-            <button onclick="removeHwPhoto('${key}','${ds}');this.closest('[style*=fixed]').remove();drawHwParent();" style="position:absolute;top:6px;right:6px;padding:4px 8px;border-radius:8px;border:none;background:rgba(0,0,0,0.5);color:white;font-size:11px;cursor:pointer">삭제</button>
+            <button onclick="removeHwPhotoParent('${key}','${ds}')" style="position:absolute;top:6px;right:6px;padding:4px 8px;border-radius:8px;border:none;background:rgba(0,0,0,0.5);color:white;font-size:11px;cursor:pointer">삭제</button>
           </div>`
-        :`<label onclick="event.stopPropagation()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:20px;border:2px dashed #c8dce8;border-radius:12px;cursor:pointer;background:#fafcff;margin-bottom:10px">
+        :`<button onclick="triggerParentPhoto('${key}','${ds}')" style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:20px;border:2px dashed #c8dce8;border-radius:12px;cursor:pointer;background:#fafcff;margin-bottom:10px;font-family:inherit">
             <span style="font-size:28px">📷</span>
             <span style="font-size:12px;color:#8aaac8;font-weight:700">사진 첨부 (카메라/갤러리)</span>
-            <input type="file" accept="image/*" onchange="attachPhotoById('${key}','${ds}',this,'hwDayPopup')" style="display:none">
-          </label>`}
+          </button>`}
 
       <!-- 메모 -->
       <div style="font-size:11px;font-weight:700;color:#0d5a7a;margin-bottom:6px">숙제 내용</div>
@@ -2247,6 +2269,50 @@ function goToHwDay(key, name, emoji, color, ds){
     </div>`;
 
   document.body.appendChild(overlay);
+}
+
+// ── 부모탭 팝업 사진 첨부 (전역 hidden input 방식) ──
+function triggerParentPhoto(key, ds){
+  const old = document.getElementById('_parentPhotoInput');
+  if(old) old.remove();
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.id = '_parentPhotoInput';
+  inp.style.cssText = 'position:fixed;top:-999px;left:-999px;opacity:0;';
+  inp.onchange = () => {
+    const file = inp.files[0];
+    if(!file){ inp.remove(); return; }
+    compressAndSavePhoto(key, ds, file, () => {
+      hwPhotos = JSON.parse(localStorage.getItem('chodinglife_hw_photos') || '{}');
+      inp.remove();
+      const popup = document.getElementById('hwDayPopup');
+      if(popup) popup.remove();
+      if(window._hwParentPopupInfo){
+        const {k,nm,em,cl} = window._hwParentPopupInfo;
+        goToHwDay(k, nm, em, cl, ds);
+      }
+      drawHwParent();
+      toast('📷 사진이 저장됐어요! ✅');
+    });
+  };
+  document.body.appendChild(inp);
+  inp.click();
+}
+
+function removeHwPhotoParent(key, ds){
+  delete hwPhotos[key+'_'+ds];
+  saveHwPhotos();
+  if(hwData[key]&&hwData[key][ds]) hwData[key][ds].hasPhoto = false;
+  saveHw();
+  const popup = document.getElementById('hwDayPopup');
+  if(popup) popup.remove();
+  if(window._hwParentPopupInfo){
+    const {k,nm,em,cl} = window._hwParentPopupInfo;
+    goToHwDay(k, nm, em, cl, ds);
+  }
+  drawHwParent();
+  toast('사진 삭제됐어요!');
 }
 
 function attachPhotoFromPopup(key, ds, input, overlay){
