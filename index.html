@@ -225,6 +225,12 @@ body{background:#e8f4ff;}
       <div id="ptsArriveList"><div style="text-align:center;padding:12px;color:#8aaac8;font-size:12px">도착 기록이 없어요</div></div>
     </div>
 
+    <!-- 이번주 숙제 완료 -->
+    <div class="card" style="margin-top:10px">
+      <div class="ch"><span class="ci">📚</span><span class="ct">이번주 숙제 완료</span></div>
+      <div id="ptsHwList"><div style="text-align:center;padding:12px;color:#8aaac8;font-size:12px">완료된 숙제가 없어요</div></div>
+    </div>
+
     <!-- 이번주 보상 -->
     <div class="card"><div class="ch"><span class="ci">🎁</span><span class="ct">이번주 보상</span></div>
       <div class="rwr">
@@ -447,6 +453,7 @@ if(!arriveData[todayKey]) arriveData[todayKey] = {};
 function saveArrive(){ localStorage.setItem(ARRIVE_KEY, JSON.stringify(arriveData)); }
 
 let wkS=0,goal=100,totS=0;
+let hwLog = JSON.parse(localStorage.getItem('chodinglife_hw_log')||'{}');
 let curD=(()=>{let d=new Date().getDay();return d===0?6:d-1;})();
 let curAP=new Date().getHours()<12?'am':'pm';
 let eDay=0,eItems=[];
@@ -473,6 +480,7 @@ function goPage(pid,nid){
   if(nid)document.getElementById(nid).classList.add('on');
   if(pid==='page-checkin') drawChk();
   if(pid==='page-homework') drawHwSubjects();
+  if(pid==='page-points'){ updPtsArriveList(); updPtsHwList(); }
 }
 
 function setDay(d){curD=d;drawPie();}
@@ -1436,6 +1444,25 @@ function togGPS(){}
 function startG(){}
 function stopG(){}
 
+function updPtsHwList(){
+  const el = document.getElementById('ptsHwList');
+  if(!el) return;
+  hwLog = JSON.parse(localStorage.getItem('chodinglife_hw_log')||'{}');
+  const logs = Object.values(hwLog);
+  if(!logs.length){
+    el.innerHTML = '<div style="text-align:center;padding:12px;color:#8aaac8;font-size:12px">완료된 숙제가 없어요</div>';
+    return;
+  }
+  // 최신순 정렬
+  logs.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  el.innerHTML = logs.map(log=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f7ff">
+      <span style="font-size:18px">${log.emoji}</span>
+      <span style="flex:1;font-size:13px;font-weight:700;color:#0d5a7a">${log.name} <span style="color:#8aaac8;font-weight:400">${log.dayLabel}요일</span></span>
+      <span style="font-size:11px;color:#2bc87a;font-weight:700">+20점 ✓</span>
+    </div>`).join('');
+}
+
 function chkP(btn,p){btn.className='ab grn';btn.textContent='✓';wkS+=p;totS+=p;updSc();toast('+'+p+'점! 🎉');}
 function pickRw(c,n){if(c.classList.contains('lk')){toast('목표까지 '+(goal-wkS)+'점 더!');return;}document.querySelectorAll('.rwc').forEach(x=>x.classList.remove('sel'));c.classList.add('sel');toast('"'+n+'" 선택! 부모님께 알림! 📱');}
 // ══════════════════════════════════════════════
@@ -2205,9 +2232,22 @@ function attachPhotoParent(key, ds, input){
 
 function parentApproveHw(key, ds){
   if(!hwData[key]) hwData[key]={};
+  // 이미 완료된 경우 중복 포인트 방지
+  if((hwData[key][ds]||{}).status === 'done'){
+    toast('이미 완료 처리됐어요!'); return;
+  }
   hwData[key][ds] = {...(hwData[key][ds]||{}), status:'done'};
   wkS+=20; totS+=20; updSc();
+  // 숙제 완료 이력 로그 저장
+  const info = HW_INFO[key] || {e:'📚', n:key};
+  const DN_KR2 = ['월','화','수','목','금','토','일'];
+  const dayIdx2 = parseInt(ds.replace('day_',''));
+  if(!hwLog) hwLog = {};
+  const logKey = key + '_' + ds;
+  hwLog[logKey] = {name: info.n||key, emoji: info.e||'📚', ds, dayLabel: DN_KR2[dayIdx2]||'', ts: Date.now()};
+  localStorage.setItem('chodinglife_hw_log', JSON.stringify(hwLog));
   saveHw();
+  updPtsHwList();
   toast('✅ 완료 처리! +20점 지급!');
   drawHwParent();
   drawHwSubjects();
