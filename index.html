@@ -211,15 +211,23 @@ body{background:#e8f4ff;}
 <div class="page hidden" id="page-points">
   <div class="sub-hd"><div class="back-btn" onclick="goMain()">‹</div><div class="sub-ttl">⭐ 포인트</div><div class="sub-av">⭐</div></div>
   <div class="sp">
+    <!-- 포인트 헤더 -->
     <div class="pts-h">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div><div style="color:#fff;font-size:14px;font-weight:800">이번주 목표</div><div style="color:rgba(255,255,255,0.85);font-size:11px;margin-top:2px">열심히 하면 달성!</div></div>
-        <div style="text-align:right"><div style="font-size:36px;font-weight:900;color:#fff;line-height:1" id="ptsN">0</div><div style="font-size:12px;color:rgba(255,255,255,0.8)">/ <span id="ptsG">100</span>점</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div><div style="color:#fff;font-size:14px;font-weight:800">포인트 현황</div><div style="color:rgba(255,255,255,0.85);font-size:11px;margin-top:2px">이번주 목표 <span id="ptsG">100</span>점</div></div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-bottom:2px">누계 <span id="ptsTotal" style="font-weight:800;font-size:13px">0</span>점</div>
+          <div style="display:flex;align-items:baseline;gap:4px;justify-content:flex-end">
+            <span style="font-size:11px;color:rgba(255,255,255,0.8)">금일</span>
+            <span style="font-size:28px;font-weight:900;color:#fff;line-height:1" id="ptsTodayN">0</span>
+            <span style="font-size:11px;color:rgba(255,255,255,0.8)">점</span>
+          </div>
+        </div>
       </div>
       <div class="pts-prog"><div class="pts-fill" id="ptsFill" style="width:0%"></div></div>
     </div>
 
-    <!-- 오늘 도착 현황 -->
+    <!-- 오늘 도착 -->
     <div class="card" style="margin-top:10px">
       <div class="ch"><span class="ci">📍</span><span class="ct">오늘 도착 <span id="ptsArriveDate" style="font-size:11px;color:#8aaac8;font-weight:400"></span></span></div>
       <div id="ptsArriveList"><div style="text-align:center;padding:12px;color:#8aaac8;font-size:12px">도착 기록이 없어요</div></div>
@@ -231,8 +239,14 @@ body{background:#e8f4ff;}
       <div id="ptsHwList"><div style="text-align:center;padding:12px;color:#8aaac8;font-size:12px">완료된 숙제가 없어요</div></div>
     </div>
 
+    <!-- 보너스 포인트 이력 -->
+    <div class="card" style="margin-top:10px">
+      <div class="ch"><span class="ci">🌟</span><span class="ct">엄마 보너스 포인트</span></div>
+      <div id="ptsBonusList"><div style="text-align:center;padding:12px;color:#8aaac8;font-size:12px">보너스 포인트가 없어요</div></div>
+    </div>
+
     <!-- 이번주 보상 -->
-    <div class="card"><div class="ch"><span class="ci">🎁</span><span class="ct">이번주 보상</span></div>
+    <div class="card" style="margin-top:10px"><div class="ch"><span class="ci">🎁</span><span class="ct">이번주 보상</span></div>
       <div class="rwr">
         <div class="rwc lk" onclick="pickRw(this,'피자 먹기')"><div class="rwlk">🔒</div><div style="font-size:22px">🍕</div><div style="font-size:10px;font-weight:700;color:#1a3a5c;margin-top:2px">피자 먹기</div></div>
         <div class="rwc lk" onclick="pickRw(this,'게임 1시간')"><div class="rwlk">🔒</div><div style="font-size:22px">🎮</div><div style="font-size:10px;font-weight:700;color:#1a3a5c;margin-top:2px">게임 1시간</div></div>
@@ -241,7 +255,7 @@ body{background:#e8f4ff;}
       <div style="font-size:11px;color:#8aaac8;text-align:center;margin-top:8px" id="rwH">목표 달성하면 보상을 골라요!</div>
     </div>
 
-    <div class="bb"><div class="bbl"><div class="bbs">오늘 획득</div><div class="bbn" id="ptsBN">0점</div></div><div class="bbr"><div class="bbs">총 저축</div><div style="font-size:13px;font-weight:700" id="savN">0점 🏦</div></div></div>
+    <div class="bb"><div class="bbl"><div class="bbs">금일 획득</div><div class="bbn" id="ptsBN">0점</div></div><div class="bbr"><div class="bbs">누계 저축</div><div style="font-size:13px;font-weight:700" id="savN">0점 🏦</div></div></div>
   </div>
 </div>
 
@@ -251,7 +265,7 @@ body{background:#e8f4ff;}
   <div class="sp">
     <div style="margin:10px 14px 0;background:linear-gradient(135deg,#3a9bd5,#2ec4a9);border-radius:18px;padding:14px 16px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="color:#fff"><div style="font-size:14px;font-weight:800">오늘 도착체크</div><div style="font-size:11px;opacity:0.85;margin-top:2px">시간이 되면 버튼이 활성화돼요!</div></div>
+        <div style="color:#fff"><div style="font-size:14px;font-weight:800">오늘 도착체크</div><div style="font-size:11px;opacity:0.85;margin-top:2px" id="chkDate">시간이 되면 버튼이 활성화돼요!</div></div>
         <div style="text-align:right;color:#fff"><div style="font-size:28px;font-weight:900;line-height:1" id="chkSc">0점</div><div style="font-size:10px;opacity:0.8" id="chkCB">0/0개 완료</div></div>
       </div>
     </div>
@@ -461,8 +475,9 @@ let arriveData = JSON.parse(localStorage.getItem(ARRIVE_KEY)||'{}');
 if(!arriveData[todayKey]) arriveData[todayKey] = {};
 function saveArrive(){ localStorage.setItem(ARRIVE_KEY, JSON.stringify(arriveData)); }
 
-let wkS=0,goal=100,totS=0;
+let wkS=0,goal=100,totS=0,todayS=0;
 let hwLog = JSON.parse(localStorage.getItem('chodinglife_hw_log')||'{}');
+let bonusLog = JSON.parse(localStorage.getItem('chodinglife_bonus_log')||'{}');
 let curD=(()=>{let d=new Date().getDay();return d===0?6:d-1;})();
 let curAP=new Date().getHours()<12?'am':'pm';
 let eDay=0,eItems=[];
@@ -487,9 +502,19 @@ function goPage(pid,nid){
   document.getElementById(pid).classList.remove('hidden');
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
   if(nid)document.getElementById(nid).classList.add('on');
-  if(pid==='page-checkin') drawChk();
+  if(pid==='page-checkin'){
+    drawChk();
+    const chkDate=document.getElementById('chkDate');
+    if(chkDate){
+      const now=new Date();
+      const yy=String(now.getFullYear()).slice(2);
+      const mm=String(now.getMonth()+1).padStart(2,'0');
+      const dd=String(now.getDate()).padStart(2,'0');
+      chkDate.textContent=`${yy}.${mm}.${dd} · 시간이 되면 버튼이 활성화돼요!`;
+    }
+  }
   if(pid==='page-homework') drawHwSubjects();
-  if(pid==='page-points'){ updPtsArriveList(); updPtsHwList(); }
+  if(pid==='page-points'){ updPtsArriveList(); updPtsHwList(); updPtsBonusList(); }
 }
 
 function setDay(d){curD=d;drawPie();}
@@ -1425,7 +1450,7 @@ function arriveNow(idx){
   const key = curD + '_' + idx + '_' + arriveItems[idx].name;
   arriveData[todayKey][key] = true;
   saveArrive();
-  wkS += 10; totS += 10; updSc();
+  wkS += 10; totS += 10; todayS += 10; updSc();
   toast('📍 ' + arriveItems[idx].name + ' 도착! +10점 🎉');
   drawChk();
   updPtsArriveList();
@@ -2255,7 +2280,7 @@ function parentApproveHw(key, ds){
     toast('이미 완료 처리됐어요!'); return;
   }
   hwData[key][ds] = {...(hwData[key][ds]||{}), status:'done'};
-  wkS+=20; totS+=20; updSc();
+  wkS+=20; totS+=20; todayS+=20; updSc();
   // 숙제 완료 이력 로그 저장
   const info = HW_INFO[key] || {e:'📚', n:key};
   const DN_KR2 = ['월','화','수','목','금','토','일'];
@@ -2511,7 +2536,35 @@ function removeHwExtra(idx){
 
 function togM(id,btn){const m=document.getElementById(id);const s=m.style.display==='none'||!m.style.display;m.style.display=s?'block':'none';btn.textContent=s?'📝 닫기':'📝';}
 function subHw(cid,sid,p){const c=document.getElementById(cid);const b=c.querySelector('.hwb');c.className='hwc wt';b.className='hwb ws';b.textContent='⏳ 부모님 확인 기다리는 중...';hwP++;document.getElementById('hwPB').textContent=hwP+'건';toast('📱 부모님께 확인 요청!');}
-function bonus(n,p){wkS+=p;totS+=p;updSc();toast('🌟 '+n+' +'+p+'점! 😄');}
+function bonus(n,p){
+  wkS+=p; totS+=p; todayS+=p;
+  // 보너스 이력 저장
+  if(!bonusLog) bonusLog={};
+  const bkey = 'bonus_'+Date.now();
+  bonusLog[bkey]={name:n, point:p, ts:Date.now()};
+  localStorage.setItem('chodinglife_bonus_log', JSON.stringify(bonusLog));
+  updSc();
+  updPtsBonusList();
+  toast('🌟 '+n+' +'+p+'점! 😄');
+}
+
+function updPtsBonusList(){
+  const el = document.getElementById('ptsBonusList');
+  if(!el) return;
+  bonusLog = JSON.parse(localStorage.getItem('chodinglife_bonus_log')||'{}');
+  const logs = Object.values(bonusLog);
+  if(!logs.length){
+    el.innerHTML = '<div style="text-align:center;padding:12px;color:#8aaac8;font-size:12px">보너스 포인트가 없어요</div>';
+    return;
+  }
+  logs.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  el.innerHTML = logs.map(log=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f7ff">
+      <span style="font-size:18px">🌟</span>
+      <span style="flex:1;font-size:13px;font-weight:700;color:#0d5a7a">${log.name} <span style="color:#8aaac8;font-weight:400;font-size:11px">엄마가 줬어요</span></span>
+      <span style="font-size:11px;color:#f5a623;font-weight:700">+${log.point}점 ✓</span>
+    </div>`).join('');
+}
 function pTab(el,v){document.querySelectorAll('#page-parent .tb').forEach(t=>t.classList.remove('on'));el.classList.add('on');['ov','sc','st'].forEach(id=>{document.getElementById('pt-'+id).style.display=id===v?'block':'none';});if(v==='sc'){drawWkGrid();// 오늘 요일 자동 선택 (월=0 ... 일=6, JS는 일=0이라 변환)
 const jsDay=new Date().getDay();const todayIdx=jsDay===0?6:jsDay-1;setTimeout(()=>showWkPreview(todayIdx),80);}}
 function nudge(btn){btn.textContent='전송됨 ✓';btn.className='ns st';toast('📱 전송됐어요!');}
@@ -2520,9 +2573,13 @@ function cycR(i){rwI[i]=(rwI[i]+1)%RW.length;document.getElementById('rE'+i).tex
 
 function updSc(){
   const p=Math.min(wkS/goal*100,100);
-  ['ptsN','pSc'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=wkS;});
+  // 이번주 누계 (헤더)
+  const ptsN=document.getElementById('ptsN'); if(ptsN) ptsN.textContent=wkS;
+  const ptsTotal=document.getElementById('ptsTotal'); if(ptsTotal) ptsTotal.textContent=wkS;
+  const ptsTodayN=document.getElementById('ptsTodayN'); if(ptsTodayN) ptsTodayN.textContent=todayS;
+  const pSc=document.getElementById('pSc'); if(pSc) pSc.textContent=wkS;
   ['ptsFill','pPg'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.width=p+'%';});
-  const ptsBN=document.getElementById('ptsBN'); if(ptsBN) ptsBN.textContent=wkS+'점';
+  const ptsBN=document.getElementById('ptsBN'); if(ptsBN) ptsBN.textContent=todayS+'점';
   const savN=document.getElementById('savN'); if(savN) savN.textContent=totS+'점 🏦';
   const pSub=document.getElementById('pSub'); if(pSub) pSub.textContent=wkS>=goal?'🎉 목표 달성! 보상 골라요!':'목표까지 '+(goal-wkS)+'점 남았어요!';
   const pG=document.getElementById('pG'); if(pG) pG.textContent=goal;
