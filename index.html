@@ -2217,6 +2217,7 @@ function goToHwDay(key, name, emoji, color, ds){
   const lastPhoto = getHwLastPhoto(key, ds);
   const dayIdx = parseInt(ds.replace('day_',''));
   const DN_KR = ['월','화','수','목','금','토','일'];
+  const statusIcon = hw.status==='done'?'✅':hw.status==='pending'?'⏳':'📋';
 
   const overlay = document.createElement('div');
   overlay.id = 'hwDayPopup';
