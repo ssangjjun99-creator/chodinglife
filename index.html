@@ -221,7 +221,7 @@ body{background:#e8f4ff;}
 
     <!-- 오늘 도착 현황 -->
     <div class="card" style="margin-top:10px">
-      <div class="ch"><span class="ci">📍</span><span class="ct">오늘 도착</span></div>
+      <div class="ch"><span class="ci">📍</span><span class="ct">오늘 도착 <span id="ptsArriveDate" style="font-size:11px;color:#8aaac8;font-weight:400"></span></span></div>
       <div id="ptsArriveList"><div style="text-align:center;padding:12px;color:#8aaac8;font-size:12px">도착 기록이 없어요</div></div>
     </div>
 
@@ -309,12 +309,22 @@ body{background:#e8f4ff;}
     <div id="pt-ov">
       <div style="margin:10px 14px 0;background:linear-gradient(135deg,#3a9bd5,#2ec4a9);border-radius:18px;padding:14px 16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="color:#fff"><div style="font-size:14px;font-weight:800">오늘 현황</div><div style="font-size:11px;opacity:0.85;margin-top:2px" id="pSub">스케쥴을 설정해주세요!</div></div>
-          <div style="text-align:right;color:#fff"><div style="font-size:32px;font-weight:900;line-height:1" id="pSc">0</div><div style="font-size:11px;opacity:0.8">/ <span id="pG">100</span>점</div></div>
+          <div style="color:#fff">
+            <div style="font-size:14px;font-weight:800">이번주 포인트 현황</div>
+            <div style="font-size:11px;opacity:0.85;margin-top:2px" id="pSub">열심히 하면 달성!</div>
+          </div>
+          <div style="text-align:right;color:#fff">
+            <div style="font-size:32px;font-weight:900;line-height:1" id="pSc">0</div>
+            <div style="font-size:11px;opacity:0.8">/ <span id="pG">100</span>점</div>
+          </div>
         </div>
-        <div style="background:rgba(255,255,255,0.25);border-radius:5px;height:6px;overflow:hidden"><div style="height:100%;border-radius:5px;background:#fff;transition:width 0.8s" id="pPg"></div></div>
+        <div style="background:rgba(255,255,255,0.25);border-radius:5px;height:6px;overflow:hidden">
+          <div style="height:100%;border-radius:5px;background:#fff;transition:width 0.8s" id="pPg"></div>
+        </div>
       </div>
-      <div class="card" style="margin-top:10px"><div class="ch"><span class="ci">🌟</span><span class="ct">보너스 포인트</span></div>
+      <div class="card" style="margin-top:10px">
+        <div class="ch"><span class="ci">🌟</span><span class="ct">보너스 포인트</span></div>
+        <div style="font-size:11px;color:#8aaac8;margin-bottom:8px">누르면 즉시 포인트에 반영돼요!</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button style="padding:8px 11px;border-radius:10px;border:none;cursor:pointer;background:#e8faf0;color:#2bc87a;font-size:12px;font-weight:700;font-family:inherit" onclick="bonus('착한 일',15)">😊 착한일 +15점</button>
           <button style="padding:8px 11px;border-radius:10px;border:none;cursor:pointer;background:#e8faf0;color:#2bc87a;font-size:12px;font-weight:700;font-family:inherit" onclick="bonus('말씀 듣기',15)">👂 말씀듣기 +15점</button>
@@ -326,7 +336,6 @@ body{background:#e8f4ff;}
         <div class="ni"><span style="font-size:16px">⏰</span><div class="nt">하루 전 · "내일까지야! 오늘 안에 끝내보자! 💪"</div><button class="ns" onclick="nudge(this)">전송</button></div>
         <div class="ni"><span style="font-size:16px">💖</span><div class="nt">응원 · "오늘도 최고야! 엄마가 응원해! 🥰"</div><button class="ns" onclick="nudge(this)">전송</button></div>
       </div>
-      <div class="bb"><div class="bbl"><div class="bbs">이번주</div><div class="bbn" id="pBN">0점</div></div><div class="bbr"><div class="bbs">총 저축</div><div style="font-size:13px;font-weight:700" id="pSav">0점 🏦</div></div></div>
     </div>
     <div id="pt-sc" style="display:none">
       <!-- 헤더 -->
@@ -1425,6 +1434,15 @@ function arriveNow(idx){
 function updPtsArriveList(){
   const el = document.getElementById('ptsArriveList');
   if(!el) return;
+  // 날짜 표시
+  const dateEl = document.getElementById('ptsArriveDate');
+  if(dateEl){
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(2);
+    const mm = String(now.getMonth()+1).padStart(2,'0');
+    const dd = String(now.getDate()).padStart(2,'0');
+    dateEl.textContent = `(${yy}.${mm}.${dd})`;
+  }
   const items = SCH[curD] || [];
   const done = items.filter(it => it._arrived);
   if(!done.length){
@@ -2504,11 +2522,10 @@ function updSc(){
   const p=Math.min(wkS/goal*100,100);
   ['ptsN','pSc'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=wkS;});
   ['ptsFill','pPg'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.width=p+'%';});
-  document.getElementById('ptsBN').textContent=wkS+'점';
-  document.getElementById('savN').textContent=totS+'점 🏦';
-  document.getElementById('pBN').textContent=wkS+'점';
-  document.getElementById('pSav').textContent=totS+'점 🏦';
-  document.getElementById('pSub').textContent=wkS>=goal?'🎉 목표 달성! 보상 골라요!':'목표까지 '+(goal-wkS)+'점 남았어요!';
+  const ptsBN=document.getElementById('ptsBN'); if(ptsBN) ptsBN.textContent=wkS+'점';
+  const savN=document.getElementById('savN'); if(savN) savN.textContent=totS+'점 🏦';
+  const pSub=document.getElementById('pSub'); if(pSub) pSub.textContent=wkS>=goal?'🎉 목표 달성! 보상 골라요!':'목표까지 '+(goal-wkS)+'점 남았어요!';
+  const pG=document.getElementById('pG'); if(pG) pG.textContent=goal;
   if(wkS>=goal){document.querySelectorAll('.rwc').forEach(c=>{c.classList.remove('lk');const l=c.querySelector('.rwlk');if(l)l.style.display='none';});}
 }
 
