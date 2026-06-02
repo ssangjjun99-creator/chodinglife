@@ -2609,19 +2609,10 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 function updDB(){} // 위클리 방식으로 교체되어 stub 유지
 
 // ── 초기화 ──
-try {
-  tick(); setInterval(tick, 1000);
-  document.getElementById('amB').classList.toggle('on', curAP==='am');
-  document.getElementById('pmB').classList.toggle('on', curAP==='pm');
-  setDay(curD);
-  updSc();
-  updHwScore();
-} catch(e) {
-  console.error('초기화 에러:', e);
-  // 에러나도 시계는 돌아가게
-  document.getElementById('clock').textContent = '--:--';
-  document.getElementById('clockDate').textContent = '';
-}
+tick();setInterval(tick,1000);
+document.getElementById('amB').classList.toggle('on',curAP==='am');
+document.getElementById('pmB').classList.toggle('on',curAP==='pm');
+setDay(curD);
 </script>
 </body>
 </html>
