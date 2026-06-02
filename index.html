@@ -702,7 +702,9 @@ function drawClockMarks(ctx, cx, cy, ro, ri, ap){
 function drawPie(){
   const ALL    = SCH[curD] || [];
   const isFree = FREE[curD];
-  const pieCtx = document.getElementById('pieC').getContext('2d');
+  const pieEl = document.getElementById('pieC');
+  if(!pieEl) return;
+  const pieCtx = pieEl.getContext('2d');
   pieCtx.clearRect(0,0,280,280);
   document.getElementById('svgL').innerHTML='';
 
@@ -805,7 +807,9 @@ function setCenter(e,n,t){document.getElementById('ccE').textContent=e;document.
 function setNow(m,nx,e){document.getElementById('nMain').textContent=m;document.getElementById('nNext').textContent=nx;document.getElementById('nEmoji').textContent=e;}
 
 function drawH(){
-  const c=document.getElementById('handC'), ctx=c.getContext('2d');
+  const c=document.getElementById('handC');
+  if(!c) return;
+  const ctx=c.getContext('2d');
   ctx.clearRect(0,0,280,280);
   const now=new Date();
   const hv=now.getHours()%12+now.getMinutes()/60+now.getSeconds()/3600;
@@ -2605,15 +2609,19 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 function updDB(){} // 위클리 방식으로 교체되어 stub 유지
 
 // ── 초기화 ──
-window.addEventListener('DOMContentLoaded', () => {
+try {
   tick(); setInterval(tick, 1000);
   document.getElementById('amB').classList.toggle('on', curAP==='am');
   document.getElementById('pmB').classList.toggle('on', curAP==='pm');
   setDay(curD);
   updSc();
-  checkHwWeekReset();
   updHwScore();
-});
+} catch(e) {
+  console.error('초기화 에러:', e);
+  // 에러나도 시계는 돌아가게
+  document.getElementById('clock').textContent = '--:--';
+  document.getElementById('clockDate').textContent = '';
+}
 </script>
 </body>
 </html>
