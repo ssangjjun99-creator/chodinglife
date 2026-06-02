@@ -1658,8 +1658,6 @@ let hwOpenCat = null;
 function drawHwSubjects(){
   const list = document.getElementById('hwSubjectList');
   if(!list) return;
-
-  const HW_NAMES = {
     '학교':    {id:'sch',  n:'학교',     e:'🏫', c:'#7b9ef7', bg:'#f0f4ff'},
     '영어학원':{id:'eng',  n:'영어학원', e:'📖', c:'#ffaa55', bg:'#fff8f0'},
     '수학학원':{id:'math', n:'수학학원', e:'📚', c:'#b07ef7', bg:'#f8f0ff'},
@@ -1736,6 +1734,8 @@ function drawHwSubjects(){
       ${pending > 0 ? `<div style="margin-top:8px;padding:6px 10px;background:#fff8e1;border-radius:8px;font-size:11px;color:#c07000;font-weight:700">⏳ 부모님 확인 대기 ${pending}건</div>` : ''}
     </div>`;
   }).join('');
+  // 숙제 포인트 하단 업데이트
+  updHwScore();
 }
 
 function getThisWeekMonday(){
@@ -2062,14 +2062,17 @@ function saveHwMemo(key, ds, val){
 }
 
 function updHwScore(){
-  // hwLog에서 이번주 완료된 숙제 포인트 합산 (포인트탭과 동일 소스)
   hwLog = JSON.parse(localStorage.getItem('chodinglife_hw_log')||'{}');
   const hwDone = Object.values(hwLog).length;
   const sc = hwDone * 20;
-  // 완료/전체 카운트
+  // 전체 숙제 개수 = 각 과목의 이번주 수업 있는 요일 수 합산
   let total = 0;
-  HW_CATS.forEach(catId => {
+  const HW_NAMES = {'학교':'sch','영어학원':'eng','수학학원':'math'};
+  Object.values(HW_NAMES).forEach(catId => {
     total += getHwDates(catId).length;
+  });
+  hwExtra.forEach(ex => {
+    total += (ex.days||[]).length;
   });
   const el1 = document.getElementById('hwSc'); if(el1) el1.textContent = sc+'점';
   const el2 = document.getElementById('hwCB'); if(el2) el2.textContent = hwDone+'/'+total+'개';
