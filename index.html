@@ -214,14 +214,13 @@ body{background:#e8f4ff;}
     <!-- 포인트 헤더 -->
     <div class="pts-h">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div><div style="color:#fff;font-size:14px;font-weight:800">포인트 현황</div><div style="color:rgba(255,255,255,0.85);font-size:11px;margin-top:2px">이번주 목표 <span id="ptsG">100</span>점</div></div>
+        <div>
+          <div style="color:#fff;font-size:14px;font-weight:800">포인트 현황</div>
+          <div style="color:rgba(255,255,255,0.85);font-size:11px;margin-top:2px">이번주 목표 <span id="ptsG">100</span>점</div>
+        </div>
         <div style="text-align:right">
-          <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-bottom:2px">누계 <span id="ptsTotal" style="font-weight:800;font-size:13px">0</span>점</div>
-          <div style="display:flex;align-items:baseline;gap:4px;justify-content:flex-end">
-            <span style="font-size:11px;color:rgba(255,255,255,0.8)">금일</span>
-            <span style="font-size:28px;font-weight:900;color:#fff;line-height:1" id="ptsTodayN">0</span>
-            <span style="font-size:11px;color:rgba(255,255,255,0.8)">점</span>
-          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-bottom:4px">금주 <span id="ptsTotal" style="font-weight:900;font-size:16px;color:#fff">0</span>점</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.8)">금일 <span id="ptsTodayN" style="font-weight:900;font-size:16px;color:#ffe066">0</span>점</div>
         </div>
       </div>
       <div class="pts-prog"><div class="pts-fill" id="ptsFill" style="width:0%"></div></div>
@@ -255,8 +254,7 @@ body{background:#e8f4ff;}
       <div style="font-size:11px;color:#8aaac8;text-align:center;margin-top:8px" id="rwH">목표 달성하면 보상을 골라요!</div>
     </div>
 
-    <div class="bb"><div class="bbl"><div class="bbs">금일 획득</div><div class="bbn" id="ptsBN">0점</div></div><div class="bbr"><div class="bbs">누계 저축</div><div style="font-size:13px;font-weight:700" id="savN">0점 🏦</div></div></div>
-  </div>
+    </div>
 </div>
 
 <!-- 도착체크 -->
@@ -2578,19 +2576,54 @@ function nudge(btn){btn.textContent='전송됨 ✓';btn.className='ns st';toast(
 function adjG(d){goal=Math.max(50,Math.min(300,goal+d));document.getElementById('goalD').textContent=goal;updSc();}
 function cycR(i){rwI[i]=(rwI[i]+1)%RW.length;document.getElementById('rE'+i).textContent=RW[rwI[i]].e;document.getElementById('rN'+i).textContent=RW[rwI[i]].n;}
 
+// ── 금일/금주 포인트 로드 및 리셋 ──
+function loadAndResetScores(){
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0,10); // 2026-06-03
+  const jsDay = now.getDay();
+  const diff = jsDay===0?-6:1-jsDay;
+  const mon = new Date(now);
+  mon.setDate(now.getDate()+diff);
+  const weekStr = mon.toISOString().slice(0,10); // 이번주 월요일
+
+  const saved = JSON.parse(localStorage.getItem('chodinglife_scores')||'{}');
+
+  // 날짜 바뀌면 금일 리셋
+  if(saved.todayDate !== todayStr){ saved.todayPts = 0; saved.todayDate = todayStr; }
+  // 주 바뀌면 금주 리셋
+  if(saved.weekDate !== weekStr){ saved.weekPts = 0; saved.weekDate = weekStr; }
+
+  todayS = saved.todayPts || 0;
+  wkS = saved.weekPts || 0;
+  totS = saved.totalPts || 0;
+  localStorage.setItem('chodinglife_scores', JSON.stringify(saved));
+}
+
+function saveScores(){
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0,10);
+  const jsDay = now.getDay();
+  const diff = jsDay===0?-6:1-jsDay;
+  const mon = new Date(now);
+  mon.setDate(now.getDate()+diff);
+  const weekStr = mon.toISOString().slice(0,10);
+  localStorage.setItem('chodinglife_scores', JSON.stringify({
+    todayPts: todayS, todayDate: todayStr,
+    weekPts: wkS, weekDate: weekStr,
+    totalPts: totS
+  }));
+}
+
 function updSc(){
   const p=Math.min(wkS/goal*100,100);
-  // 이번주 누계 (헤더)
-  const ptsN=document.getElementById('ptsN'); if(ptsN) ptsN.textContent=wkS;
   const ptsTotal=document.getElementById('ptsTotal'); if(ptsTotal) ptsTotal.textContent=wkS;
   const ptsTodayN=document.getElementById('ptsTodayN'); if(ptsTodayN) ptsTodayN.textContent=todayS;
   const pSc=document.getElementById('pSc'); if(pSc) pSc.textContent=wkS;
   ['ptsFill','pPg'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.width=p+'%';});
-  const ptsBN=document.getElementById('ptsBN'); if(ptsBN) ptsBN.textContent=todayS+'점';
-  const savN=document.getElementById('savN'); if(savN) savN.textContent=totS+'점 🏦';
   const pSub=document.getElementById('pSub'); if(pSub) pSub.textContent=wkS>=goal?'🎉 목표 달성! 보상 골라요!':'목표까지 '+(goal-wkS)+'점 남았어요!';
   const pG=document.getElementById('pG'); if(pG) pG.textContent=goal;
   if(wkS>=goal){document.querySelectorAll('.rwc').forEach(c=>{c.classList.remove('lk');const l=c.querySelector('.rwlk');if(l)l.style.display='none';});}
+  saveScores();
 }
 
 function tick(){
@@ -2605,6 +2638,7 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 function updDB(){} // 위클리 방식으로 교체되어 stub 유지
 
 // ── 초기화 ──
+loadAndResetScores();
 tick();setInterval(tick,1000);
 document.getElementById('amB').classList.toggle('on',curAP==='am');
 document.getElementById('pmB').classList.toggle('on',curAP==='pm');
