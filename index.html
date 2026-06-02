@@ -1662,15 +1662,11 @@ let hwOpenCat = null;
 function drawHwSubjects(){
   const list = document.getElementById('hwSubjectList');
   if(!list) return;
+  const HW_NAMES = {
     '학교':    {id:'sch',  n:'학교',     e:'🏫', c:'#7b9ef7', bg:'#f0f4ff'},
     '영어학원':{id:'eng',  n:'영어학원', e:'📖', c:'#ffaa55', bg:'#fff8f0'},
     '수학학원':{id:'math', n:'수학학원', e:'📚', c:'#b07ef7', bg:'#f8f0ff'},
   };
-  // 부모 추가 항목도 포함
-  hwExtra.forEach(ex => {
-    HW_NAMES[ex.name] = {id:'extra_'+ex.name, n:ex.name, e:'✍️', c:'#ff7043', bg:'#fff4f0'};
-  });
-
   // 부모 추가 항목도 포함
   hwExtra.forEach(ex => {
     HW_NAMES[ex.name] = {id:'extra_'+ex.name, n:ex.name, e:'✍️', c:'#ff7043', bg:'#fff4f0'};
@@ -2071,7 +2067,7 @@ function updHwScore(){
   const sc = hwDone * 20;
   // 전체 숙제 개수 = 각 과목의 이번주 수업 있는 요일 수 합산
   let total = 0;
-  const HW_NAMES = {'학교':'sch','영어학원':'eng','수학학원':'math'};
+  const HW_NAMES = {sch:'sch', eng:'eng', math:'math'};
   Object.values(HW_NAMES).forEach(catId => {
     total += getHwDates(catId).length;
   });
