@@ -21,7 +21,7 @@ body{background:#e8f4ff;}
 .topbar-txt{font-size:13px;color:#3a8fb5;font-weight:700;}
 .clock-small{font-size:28px;font-weight:700;color:#0d5a7a;letter-spacing:-1px;line-height:1;}
 .clock-date{font-size:12px;color:#5aaac8;margin-top:1px;}
-.chart-outer{position:relative;width:280px;height:280px;margin-top:6px;margin-bottom:30px;}
+.chart-outer{position:relative;width:300px;height:300px;margin:6px auto 30px;display:flex;justify-content:center;align-items:center;}
 .chart-outer canvas{position:absolute;top:0;left:0;}
 #svgL{position:absolute;top:-30px;left:-30px;width:340px;height:340px;pointer-events:none;overflow:visible;}
 .chart-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;width:120px;}
@@ -786,7 +786,7 @@ function drawPie(){
     segs.forEach(seg=>{
       if(seg.isEmpty||seg._overnight||!seg.emoji){if(!seg.isEmpty)ci++; return;}
       const midA=relMinToAngle(seg.relMin+seg.durMin/2);
-      const er=R*0.62;
+      const er=R*0.75;
       const ex=cx+Math.cos(midA)*er, ey=cy+Math.sin(midA)*er;
       const durH=seg.durMin/60;
       const sz=Math.min(28,Math.max(14,durH*7));
@@ -849,25 +849,7 @@ function drawH(){
   const nowH=now.getHours()+now.getMinutes()/60+now.getSeconds()/3600;
   const from=curAP==='am'?0:12, to=curAP==='am'?12:24;
 
-  // ── 시침 (정중앙→별) ──
-  const hA=((nowH-from)/(to-from))*Math.PI*2-Math.PI/2;
-  ctx.save(); ctx.shadowColor='rgba(150,50,120,0.3)'; ctx.shadowBlur=6;
-  ctx.beginPath(); ctx.moveTo(cx,cy);
-  ctx.lineTo(cx+Math.cos(hA)*57,cy+Math.sin(hA)*57);
-  ctx.strokeStyle='rgba(210,30,140,0.9)'; ctx.lineWidth=5.5; ctx.lineCap='round'; ctx.stroke();
-  ctx.restore();
-  _drawStar(ctx,cx+Math.cos(hA)*61,cy+Math.sin(hA)*61,8.5,'rgba(220,60,150,0.9)');
-
-  // ── 분침 (정중앙→작은별) ──
-  const mA=((nowH+(now.getSeconds()/60)/60-from)/(to-from))*Math.PI*2-Math.PI/2;
-  ctx.save(); ctx.shadowColor='rgba(60,80,180,0.2)'; ctx.shadowBlur=4;
-  ctx.beginPath(); ctx.moveTo(cx,cy);
-  ctx.lineTo(cx+Math.cos(mA)*75,cy+Math.sin(mA)*75);
-  ctx.strokeStyle='rgba(120,140,230,0.8)'; ctx.lineWidth=3; ctx.lineCap='round'; ctx.stroke();
-  ctx.restore();
-  _drawStar(ctx,cx+Math.cos(mA)*78,cy+Math.sin(mA)*78,5.5,'rgba(140,160,240,0.85)');
-
-  // ── 강아지 원 ──
+  // ── 1. 강아지 원 먼저 ──
   ctx.save(); ctx.shadowColor='rgba(200,100,200,0.25)'; ctx.shadowBlur=12;
   ctx.beginPath(); ctx.arc(cx,cy,innerR,0,Math.PI*2); ctx.fillStyle='white'; ctx.fill();
   ctx.restore();
@@ -885,11 +867,24 @@ function drawH(){
   }
   ctx.restore();
 
-  // 강아지 테두리 (얇고 단색)
+  // 강아지 테두리
   ctx.beginPath(); ctx.arc(cx,cy,innerR,0,Math.PI*2);
   ctx.strokeStyle='rgba(255,160,210,0.85)'; ctx.lineWidth=2.8; ctx.stroke();
 
-  // 중앙점
+  // ── 시침 (강아지 원 테두리에서 시작 → 중간까지, 얇고 선명) ──
+  const hA=((nowH-from)/(to-from))*Math.PI*2-Math.PI/2;
+  const handStart = innerR + 4;
+  const handEnd = 72;
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.15)'; ctx.shadowBlur=3;
+  ctx.beginPath();
+  ctx.moveTo(cx+Math.cos(hA)*handStart, cy+Math.sin(hA)*handStart);
+  ctx.lineTo(cx+Math.cos(hA)*handEnd,   cy+Math.sin(hA)*handEnd);
+  ctx.strokeStyle='rgba(20,20,20,0.92)'; ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.stroke();
+  ctx.restore();
+  _drawStar(ctx, cx+Math.cos(hA)*(handEnd+5), cy+Math.sin(hA)*(handEnd+5), 6, 'rgba(20,20,20,0.9)');
+
+  // 중앙점 (맨 마지막)
   ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2); ctx.fillStyle='rgba(180,30,120,0.85)'; ctx.fill();
 }
 
