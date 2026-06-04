@@ -481,11 +481,11 @@ body{background:#e8f4ff;}
 </div>
 
 <div class="bnav">
-  <div class="nb on" id="nb0" onclick="goMain()"><div class="nb-e">🌟</div><div class="nb-l">홈</div></div>
-  <div class="nb" id="nb1" onclick="goPage('page-points','nb1')"><div class="nb-e">⭐</div><div class="nb-l">포인트</div></div>
-  <div class="nb" id="nb2" onclick="goPage('page-checkin','nb2')"><div class="nb-e">📍</div><div class="nb-l">도착</div></div>
-  <div class="nb" id="nb3" onclick="goPage('page-homework','nb3')"><div class="nb-e">📚</div><div class="nb-l">숙제</div></div>
-  <div class="nb" id="nb4" onclick="goPage('page-parent','nb4')"><div class="nb-e">👨‍👩‍👧</div><div class="nb-l">부모님</div></div>
+  <div class="nb on" id="nb0" onclick="goMain()"><div class="nb-e" style="font-size:22px">🌟</div><div class="nb-l">홈</div></div>
+  <div class="nb" id="nb1" onclick="goPage('page-points','nb1')"><div class="nb-e" style="font-size:22px">⭐</div><div class="nb-l">포인트</div></div>
+  <div class="nb" id="nb2" onclick="goPage('page-checkin','nb2')"><div class="nb-e" style="font-size:22px">📍</div><div class="nb-l">도착</div></div>
+  <div class="nb" id="nb3" onclick="goPage('page-homework','nb3')"><div class="nb-e" style="font-size:22px">📚</div><div class="nb-l">숙제</div></div>
+  <div class="nb" id="nb4" onclick="goPage('page-parent','nb4')"><div class="nb-e" style="font-size:22px">👨‍👩‍👧</div><div class="nb-l">부모님</div></div>
 </div>
 
 <script>
@@ -2748,14 +2748,24 @@ document.getElementById('pmB').classList.toggle('on',curAP==='pm');
 setDay(curD);
 
 // ── 역할 선택 ──
+function applyRole(role) {
+  if (role === 'child') {
+    // 아이: 부모님 탭 숨기기
+    document.getElementById('nb4').style.display = 'none';
+  } else {
+    // 부모: 모두 보이기
+    document.getElementById('nb4').style.display = '';
+  }
+}
+
 function selectRole(role) {
   localStorage.setItem('chodinglife_role', role);
+  document.getElementById('roleSelect').style.display = 'none';
   if (role === 'parent') {
-    document.getElementById('roleSelect').style.display = 'none';
     document.getElementById('childSetup').style.display = 'none';
+    applyRole('parent');
     goMain();
   } else {
-    document.getElementById('roleSelect').style.display = 'none';
     document.getElementById('childSetup').style.display = 'flex';
   }
 }
@@ -2766,19 +2776,37 @@ function confirmChildCode() {
   localStorage.setItem('chodinglife_role', 'child');
   localStorage.setItem('chodinglife_linkedcode', code);
   document.getElementById('childSetup').style.display = 'none';
+  applyRole('child');
   toast('🎉 연동 완료! 반가워요!');
   goMain();
+}
+
+// 로그아웃 시 역할 초기화 함수
+window.resetRole = function() {
+  localStorage.removeItem('chodinglife_role');
+  localStorage.removeItem('chodinglife_familycode');
+  localStorage.removeItem('chodinglife_linkedcode');
+  location.reload();
 }
 
 // 앱 시작 시 역할 체크
 const savedRole = localStorage.getItem('chodinglife_role');
 if (!savedRole) {
-  // 처음 실행 → 역할 선택 화면
   document.getElementById('roleSelect').style.display = 'flex';
   document.getElementById('page-main').classList.add('hidden');
 } else {
-  // 역할 저장됨 → 바로 메인
-  goMain();
+  applyRole(savedRole);
+  if (savedRole === 'child') {
+    const linked = localStorage.getItem('chodinglife_linkedcode');
+    if (!linked) {
+      document.getElementById('childSetup').style.display = 'flex';
+      document.getElementById('page-main').classList.add('hidden');
+    } else {
+      goMain();
+    }
+  } else {
+    goMain();
+  }
 }
 </script>
 
@@ -2876,7 +2904,7 @@ if (!savedRole) {
   window.doLogout = async () => {
     if (!confirm('로그아웃 하시겠어요?')) return;
     await signOut(auth);
-    toast('로그아웃 완료');
+    window.resetRole();
   };
 
   // 가족코드 복사
