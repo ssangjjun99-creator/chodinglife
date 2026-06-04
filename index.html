@@ -2668,5 +2668,50 @@ document.getElementById('amB').classList.toggle('on',curAP==='am');
 document.getElementById('pmB').classList.toggle('on',curAP==='pm');
 setDay(curD);
 </script>
+
+<!-- ✅ Firebase 연결 -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
+    from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+  import { getFirestore }
+    from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDUeBPz6VuMFAV3H7gF-VO9OeZiaxLW07Y",
+    authDomain: "chodinglife-af09a.firebaseapp.com",
+    projectId: "chodinglife-af09a",
+    storageBucket: "chodinglife-af09a.firebasestorage.app",
+    messagingSenderId: "1079803403295",
+    appId: "1:1079803403295:web:ee63044d3c21dda2ed492a",
+    measurementId: "G-BHP33RHQRD"
+  };
+
+  // Firebase 초기화
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  // 전역 접근 가능하도록 window에 등록
+  window._fbAuth = auth;
+  window._fbDb = db;
+  window._fbProvider = provider;
+  window._fbSignIn = () => signInWithPopup(auth, provider);
+  window._fbSignOut = () => signOut(auth);
+
+  // 로그인 상태 감지
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      console.log('✅ 로그인됨:', user.displayName, user.email);
+      window._fbUser = user;
+    } else {
+      console.log('🔒 로그아웃 상태');
+      window._fbUser = null;
+    }
+  });
+</script>
 </body>
 </html>
