@@ -2711,7 +2711,7 @@ setDay(curD);
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
+  import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }
     from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
   import { getFirestore }
     from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
@@ -2737,8 +2737,17 @@ setDay(curD);
   window._fbAuth = auth;
   window._fbDb = db;
   window._fbProvider = provider;
-  window._fbSignIn = () => signInWithPopup(auth, provider);
+  window._fbSignIn = () => signInWithRedirect(auth, provider);
   window._fbSignOut = () => signOut(auth);
+
+  // 리다이렉트 후 결과 처리
+  getRedirectResult(auth).then((result) => {
+    if (result && result.user) {
+      toast('✅ 로그인 완료!');
+    }
+  }).catch((e) => {
+    console.error('redirect error:', e);
+  });
 
   // 가족코드 생성 함수 (6자리 랜덤)
   function generateFamilyCode() {
@@ -2781,8 +2790,7 @@ setDay(curD);
   // 구글 로그인
   window.doGoogleLogin = async () => {
     try {
-      await signInWithPopup(auth, provider);
-      toast('✅ 로그인 완료!');
+      await signInWithRedirect(auth, provider);
     } catch(e) {
       console.error(e);
       toast('로그인 실패 😢 다시 시도해주세요');
