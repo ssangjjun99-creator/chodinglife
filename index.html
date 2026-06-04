@@ -393,6 +393,44 @@ body{background:#e8f4ff;}
           <div class="rwc" onclick="cycR(2)"><div style="font-size:22px" id="rE2">🎬</div><div style="font-size:10px;font-weight:700;color:#1a3a5c;margin-top:2px" id="rN2">영화 보기</div><div style="font-size:9px;color:#8aaac8;margin-top:1px">탭해서 변경</div></div>
         </div>
       </div>
+      <!-- 아이랑 연동하기 카드 -->
+      <div class="card" style="margin-top:10px" id="linkCard">
+        <div class="ch"><span class="ci">🔗</span><span class="ct">아이랑 연동하기</span></div>
+        <!-- 로그인 전 -->
+        <div id="linkBefore">
+          <div style="font-size:12px;color:#5aaac8;margin-bottom:12px;line-height:1.5">구글 로그인 후 가족코드를 만들어<br>지율이 폰과 실시간으로 연동하세요! 📱</div>
+          <button onclick="doGoogleLogin()" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#4285f4,#1a73e8);color:white;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <span style="font-size:18px">G</span> 구글로 로그인하기
+          </button>
+        </div>
+        <!-- 로그인 후 -->
+        <div id="linkAfter" style="display:none">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3a9bd5,#2ec4a9);display:flex;align-items:center;justify-content:center;font-size:18px">👩</div>
+            <div>
+              <div style="font-size:13px;font-weight:800;color:#0d5a7a" id="loginName">이름</div>
+              <div style="font-size:11px;color:#5aaac8" id="loginEmail">이메일</div>
+            </div>
+            <button onclick="doLogout()" style="margin-left:auto;padding:5px 10px;border-radius:8px;border:1.5px solid #d4eaf5;background:#fff;color:#8aaac8;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">로그아웃</button>
+          </div>
+          <div style="background:#f0f8ff;border-radius:12px;padding:12px;margin-bottom:10px">
+            <div style="font-size:11px;color:#5aaac8;margin-bottom:4px;font-weight:700">내 가족코드</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="font-size:22px;font-weight:800;color:#3a9bd5;letter-spacing:4px" id="familyCode">------</div>
+              <button onclick="copyFamilyCode()" style="padding:5px 10px;border-radius:8px;border:none;background:#3a9bd5;color:white;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">복사</button>
+            </div>
+            <div style="font-size:11px;color:#8aaac8;margin-top:4px">이 코드를 지율이 폰에 입력하면 연동돼요!</div>
+          </div>
+          <button onclick="showChildCodeInput()" style="width:100%;padding:10px;border-radius:12px;border:1.5px solid #3a9bd5;background:#fff;color:#3a9bd5;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+            👧 아이 코드 입력하기
+          </button>
+          <div id="childCodeInputArea" style="display:none;margin-top:10px">
+            <input id="childCodeInput" type="text" maxlength="6" placeholder="6자리 코드 입력" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid #d4eaf5;font-size:16px;text-align:center;letter-spacing:4px;font-weight:800;color:#0d5a7a;font-family:inherit;outline:none">
+            <button onclick="connectChildCode()" style="width:100%;margin-top:8px;padding:10px;border-radius:12px;border:none;background:linear-gradient(135deg,#2bc87a,#1aaa60);color:white;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">연동하기</button>
+          </div>
+        </div>
+      </div>
+
       <div class="card" style="margin-top:10px;margin-bottom:14px"><div class="ch"><span class="ci">⚙️</span><span class="ct">기타</span></div>
         <div class="sti" onclick="toast('GPS 설정 준비중!')"><div class="stib" style="background:#e8faf0">📍</div><div style="flex:1"><div class="stin">GPS 장소 설정</div><div class="stis">학교·학원·집 위치 등록</div></div><div style="font-size:14px;color:#c0d4e0">›</div></div>
         <div class="sti" onclick="toast('알림 설정 준비중!')"><div class="stib" style="background:#fff8e8">🔔</div><div style="flex:1"><div class="stin">알림 설정</div></div><div style="font-size:14px;color:#c0d4e0">›</div></div>
@@ -2702,16 +2740,82 @@ setDay(curD);
   window._fbSignIn = () => signInWithPopup(auth, provider);
   window._fbSignOut = () => signOut(auth);
 
+  // 가족코드 생성 함수 (6자리 랜덤)
+  function generateFamilyCode() {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+  }
+
   // 로그인 상태 감지
   onAuthStateChanged(auth, (user) => {
     if (user) {
       console.log('✅ 로그인됨:', user.displayName, user.email);
       window._fbUser = user;
+      // UI 업데이트
+      const before = document.getElementById('linkBefore');
+      const after = document.getElementById('linkAfter');
+      const nameEl = document.getElementById('loginName');
+      const emailEl = document.getElementById('loginEmail');
+      const codeEl = document.getElementById('familyCode');
+      if (before) before.style.display = 'none';
+      if (after) after.style.display = 'block';
+      if (nameEl) nameEl.textContent = user.displayName || '사용자';
+      if (emailEl) emailEl.textContent = user.email;
+      // 가족코드 localStorage에 저장 (없으면 새로 생성)
+      let code = localStorage.getItem('chodinglife_familycode');
+      if (!code) {
+        code = generateFamilyCode();
+        localStorage.setItem('chodinglife_familycode', code);
+      }
+      if (codeEl) codeEl.textContent = code;
     } else {
       console.log('🔒 로그아웃 상태');
       window._fbUser = null;
+      // UI 초기화
+      const before = document.getElementById('linkBefore');
+      const after = document.getElementById('linkAfter');
+      if (before) before.style.display = 'block';
+      if (after) after.style.display = 'none';
     }
   });
+
+  // 구글 로그인
+  window.doGoogleLogin = async () => {
+    try {
+      await signInWithPopup(auth, provider);
+      toast('✅ 로그인 완료!');
+    } catch(e) {
+      console.error(e);
+      toast('로그인 실패 😢 다시 시도해주세요');
+    }
+  };
+
+  // 로그아웃
+  window.doLogout = async () => {
+    if (!confirm('로그아웃 하시겠어요?')) return;
+    await signOut(auth);
+    toast('로그아웃 완료');
+  };
+
+  // 가족코드 복사
+  window.copyFamilyCode = () => {
+    const code = localStorage.getItem('chodinglife_familycode') || '';
+    navigator.clipboard.writeText(code).then(() => toast('코드 복사됨! 📋'));
+  };
+
+  // 아이 코드 입력창 토글
+  window.showChildCodeInput = () => {
+    const area = document.getElementById('childCodeInputArea');
+    area.style.display = area.style.display === 'none' ? 'block' : 'none';
+  };
+
+  // 아이 코드 연동
+  window.connectChildCode = () => {
+    const input = document.getElementById('childCodeInput').value.trim().toUpperCase();
+    if (input.length !== 6) { toast('6자리 코드를 입력해주세요!'); return; }
+    localStorage.setItem('chodinglife_linkedcode', input);
+    toast('🎉 연동 완료! 곧 실시간 연동이 활성화돼요!');
+    document.getElementById('childCodeInputArea').style.display = 'none';
+  };
 </script>
 </body>
 </html>
