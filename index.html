@@ -475,6 +475,7 @@ body{background:#e8f4ff;}
       <div class="card" style="margin-top:10px;margin-bottom:14px"><div class="ch"><span class="ci">⚙️</span><span class="ct">기타</span></div>
         <div class="sti" onclick="toast('GPS 설정 준비중!')"><div class="stib" style="background:#e8faf0">📍</div><div style="flex:1"><div class="stin">GPS 장소 설정</div><div class="stis">학교·학원·집 위치 등록</div></div><div style="font-size:14px;color:#c0d4e0">›</div></div>
         <div class="sti" onclick="toast('알림 설정 준비중!')"><div class="stib" style="background:#fff8e8">🔔</div><div style="flex:1"><div class="stin">알림 설정</div></div><div style="font-size:14px;color:#c0d4e0">›</div></div>
+        <div class="sti" onclick="resetRoleBtn()"><div class="stib" style="background:#fff0f0">🔄</div><div style="flex:1"><div class="stin" style="color:#e05555">역할 초기화</div><div class="stis">부모/아이 선택 화면으로 돌아가기</div></div><div style="font-size:14px;color:#c0d4e0">›</div></div>
       </div>
     </div>
   </div>
@@ -2787,6 +2788,14 @@ window.resetRole = function() {
   localStorage.removeItem('chodinglife_familycode');
   localStorage.removeItem('chodinglife_linkedcode');
   location.reload();
+}
+
+function resetRoleBtn() {
+  if (confirm('역할을 초기화할까요?\n부모/아이 선택 화면으로 돌아가요.')) {
+    localStorage.removeItem('chodinglife_role');
+    localStorage.removeItem('chodinglife_linkedcode');
+    location.reload();
+  }
 }
 
 // 앱 시작 시 역할 체크
