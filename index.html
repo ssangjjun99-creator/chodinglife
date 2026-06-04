@@ -165,6 +165,47 @@ body{background:#e8f4ff;}
 </head>
 <body>
 <div class="toast" id="toast"></div>
+
+<!-- 역할 선택 화면 -->
+<div id="roleSelect" class="page" style="display:none;align-items:center;justify-content:center;background:linear-gradient(170deg,#e8f7ff,#d4f0ff 50%,#e4faef);">
+  <div style="text-align:center;padding:30px 24px;width:100%;max-width:360px">
+    <div style="font-size:56px;margin-bottom:12px">🌟</div>
+    <div style="font-size:24px;font-weight:900;color:#0d5a7a;margin-bottom:6px">초딩생활</div>
+    <div style="font-size:14px;color:#5aaac8;margin-bottom:40px">우리 아이 성장 도우미</div>
+
+    <div style="font-size:15px;font-weight:800;color:#0d5a7a;margin-bottom:16px">누가 사용하시나요?</div>
+
+    <div onclick="selectRole('parent')" style="background:white;border-radius:20px;padding:20px;margin-bottom:12px;cursor:pointer;border:2px solid #d4eaf5;box-shadow:0 4px 12px rgba(58,155,213,0.1)">
+      <div style="font-size:36px;margin-bottom:8px">👨‍👩‍👧</div>
+      <div style="font-size:16px;font-weight:800;color:#0d5a7a">부모예요</div>
+      <div style="font-size:12px;color:#8aaac8;margin-top:4px">스케쥴 설정 · 숙제 확인 · 포인트 관리</div>
+    </div>
+
+    <div onclick="selectRole('child')" style="background:white;border-radius:20px;padding:20px;cursor:pointer;border:2px solid #d4eaf5;box-shadow:0 4px 12px rgba(58,155,213,0.1)">
+      <div style="font-size:36px;margin-bottom:8px">👧</div>
+      <div style="font-size:16px;font-weight:800;color:#0d5a7a">아이예요</div>
+      <div style="font-size:12px;color:#8aaac8;margin-top:4px">도착체크 · 숙제 완료 · 포인트 확인</div>
+    </div>
+  </div>
+</div>
+
+<!-- 아이 코드 입력 화면 -->
+<div id="childSetup" class="page" style="display:none;align-items:center;justify-content:center;background:linear-gradient(170deg,#e8f7ff,#d4f0ff 50%,#e4faef);">
+  <div style="text-align:center;padding:30px 24px;width:100%;max-width:360px">
+    <div style="font-size:56px;margin-bottom:12px">👧</div>
+    <div style="font-size:20px;font-weight:900;color:#0d5a7a;margin-bottom:6px">가족코드 입력</div>
+    <div style="font-size:13px;color:#5aaac8;margin-bottom:32px">부모님 폰의 가족코드를 입력해주세요!</div>
+
+    <input id="childSetupCode" type="text" maxlength="6" placeholder="예: QH3V58"
+      style="width:100%;padding:16px;border-radius:14px;border:2px solid #d4eaf5;font-size:24px;text-align:center;letter-spacing:6px;font-weight:800;color:#0d5a7a;font-family:inherit;outline:none;margin-bottom:16px">
+
+    <button onclick="confirmChildCode()" style="width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#3a9bd5,#2ec4a9);color:white;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;margin-bottom:12px">
+      🔗 연동하기
+    </button>
+    <div onclick="selectRole('parent')" style="font-size:12px;color:#8aaac8;cursor:pointer">← 부모님이세요?</div>
+  </div>
+</div>
+
 <div id="timePopup" onclick="closeTP(event)">
   <div class="tp-sheet" onclick="event.stopPropagation()">
     <div style="font-size:14px;font-weight:800;color:#0d5a7a;margin-bottom:8px">⏰ 시간 설정</div>
@@ -2705,6 +2746,40 @@ tick();setInterval(tick,1000);
 document.getElementById('amB').classList.toggle('on',curAP==='am');
 document.getElementById('pmB').classList.toggle('on',curAP==='pm');
 setDay(curD);
+
+// ── 역할 선택 ──
+function selectRole(role) {
+  localStorage.setItem('chodinglife_role', role);
+  if (role === 'parent') {
+    document.getElementById('roleSelect').style.display = 'none';
+    document.getElementById('childSetup').style.display = 'none';
+    goMain();
+  } else {
+    document.getElementById('roleSelect').style.display = 'none';
+    document.getElementById('childSetup').style.display = 'flex';
+  }
+}
+
+function confirmChildCode() {
+  const code = document.getElementById('childSetupCode').value.trim().toUpperCase();
+  if (code.length !== 6) { toast('6자리 코드를 입력해주세요!'); return; }
+  localStorage.setItem('chodinglife_role', 'child');
+  localStorage.setItem('chodinglife_linkedcode', code);
+  document.getElementById('childSetup').style.display = 'none';
+  toast('🎉 연동 완료! 반가워요!');
+  goMain();
+}
+
+// 앱 시작 시 역할 체크
+const savedRole = localStorage.getItem('chodinglife_role');
+if (!savedRole) {
+  // 처음 실행 → 역할 선택 화면
+  document.getElementById('roleSelect').style.display = 'flex';
+  document.getElementById('page-main').classList.add('hidden');
+} else {
+  // 역할 저장됨 → 바로 메인
+  goMain();
+}
 </script>
 
 <!-- ✅ Firebase 연결 -->
