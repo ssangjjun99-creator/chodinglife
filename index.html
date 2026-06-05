@@ -225,7 +225,7 @@ body{background:#e8f4ff;}
       <div class="clock-small" id="clock">00:00</div>
       <div class="clock-date" id="clockDate">로딩중...</div>
     </div>
-    <span class="topbar-txt">✦</span>
+    <span class="topbar-txt" onclick="secretReset()" style="cursor:pointer;padding:8px">✦</span>
   </div>
   <div class="chart-outer" style="margin-top:14px">
     <canvas id="pieC" width="300" height="300"></canvas>
@@ -439,9 +439,28 @@ body{background:#e8f4ff;}
         <div class="ch"><span class="ci">🔗</span><span class="ct">아이랑 연동하기</span></div>
         <!-- 로그인 전 -->
         <div id="linkBefore">
-          <div style="font-size:12px;color:#5aaac8;margin-bottom:12px;line-height:1.5">구글 로그인 후 가족코드를 만들어<br>지율이 폰과 실시간으로 연동하세요! 📱</div>
-          <button onclick="doGoogleLogin()" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#4285f4,#1a73e8);color:white;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;">
-            <span style="font-size:18px">G</span> 구글로 로그인하기
+          <div style="font-size:12px;color:#5aaac8;margin-bottom:12px;line-height:1.5">로그인 후 가족코드를 만들어<br>지율이 폰과 실시간으로 연동하세요! 📱</div>
+
+          <!-- 이메일/비번 로그인 -->
+          <div id="emailLoginArea">
+            <input id="loginEmail" type="email" placeholder="이메일 주소" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid #d4eaf5;font-size:13px;font-family:inherit;outline:none;margin-bottom:8px;box-sizing:border-box">
+            <input id="loginPw" type="password" placeholder="비밀번호 (6자리 이상)" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid #d4eaf5;font-size:13px;font-family:inherit;outline:none;margin-bottom:8px;box-sizing:border-box">
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+              <button onclick="doEmailLogin()" style="flex:1;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#3a9bd5,#2ec4a9);color:white;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">로그인</button>
+              <button onclick="doEmailSignup()" style="flex:1;padding:11px;border-radius:10px;border:1.5px solid #3a9bd5;background:white;color:#3a9bd5;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">회원가입</button>
+            </div>
+          </div>
+
+          <!-- 구분선 -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <div style="flex:1;height:1px;background:#d4eaf5"></div>
+            <div style="font-size:11px;color:#8aaac8">또는</div>
+            <div style="flex:1;height:1px;background:#d4eaf5"></div>
+          </div>
+
+          <!-- 구글 로그인 -->
+          <button onclick="doGoogleLogin()" style="width:100%;padding:11px;border-radius:10px;border:1.5px solid #d4eaf5;background:white;color:#444;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <span style="font-size:16px">G</span> 구글로 로그인하기
           </button>
         </div>
         <!-- 로그인 후 -->
@@ -2798,6 +2817,23 @@ function resetRoleBtn() {
   }
 }
 
+// 홈 우측 상단 ✦ 5번 탭하면 초기화
+let secretTapCount = 0;
+let secretTapTimer = null;
+function secretReset() {
+  secretTapCount++;
+  clearTimeout(secretTapTimer);
+  secretTapTimer = setTimeout(() => { secretTapCount = 0; }, 2000);
+  if (secretTapCount >= 5) {
+    secretTapCount = 0;
+    if (confirm('🔧 역할 초기화\n부모/아이 선택 화면으로 돌아갈게요!')) {
+      localStorage.removeItem('chodinglife_role');
+      localStorage.removeItem('chodinglife_linkedcode');
+      location.reload();
+    }
+  }
+}
+
 // 앱 시작 시 역할 체크
 const savedRole = localStorage.getItem('chodinglife_role');
 if (!savedRole) {
@@ -2823,7 +2859,7 @@ if (!savedRole) {
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics.js";
-  import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }
+  import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword }
     from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
   import { getFirestore }
     from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
@@ -2898,6 +2934,40 @@ if (!savedRole) {
       if (after) after.style.display = 'none';
     }
   });
+
+  // 이메일 회원가입
+  window.doEmailSignup = async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const pw = document.getElementById('loginPw').value.trim();
+    if (!email || !pw) { toast('이메일과 비밀번호를 입력해주세요!'); return; }
+    if (pw.length < 6) { toast('비밀번호는 6자리 이상이에요!'); return; }
+    try {
+      await createUserWithEmailAndPassword(auth, email, pw);
+      toast('✅ 회원가입 완료!');
+    } catch(e) {
+      if (e.code === 'auth/email-already-in-use') toast('이미 사용중인 이메일이에요!');
+      else if (e.code === 'auth/invalid-email') toast('이메일 형식이 올바르지 않아요!');
+      else toast('회원가입 실패 😢 다시 시도해주세요');
+      console.error(e);
+    }
+  };
+
+  // 이메일 로그인
+  window.doEmailLogin = async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const pw = document.getElementById('loginPw').value.trim();
+    if (!email || !pw) { toast('이메일과 비밀번호를 입력해주세요!'); return; }
+    try {
+      await signInWithEmailAndPassword(auth, email, pw);
+      toast('✅ 로그인 완료!');
+    } catch(e) {
+      if (e.code === 'auth/user-not-found') toast('등록되지 않은 이메일이에요!');
+      else if (e.code === 'auth/wrong-password') toast('비밀번호가 틀렸어요!');
+      else if (e.code === 'auth/invalid-credential') toast('이메일 또는 비밀번호가 틀렸어요!');
+      else toast('로그인 실패 😢 다시 시도해주세요');
+      console.error(e);
+    }
+  };
 
   // 구글 로그인
   window.doGoogleLogin = async () => {
