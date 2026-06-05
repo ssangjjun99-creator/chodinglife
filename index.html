@@ -588,6 +588,50 @@ if(!SCH){
 function save(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(SCH));
   localStorage.setItem(FREE_KEY, JSON.stringify(FREE));
+  // Firestore에도 저장 (로그인된 경우)
+  syncScheduleToFirestore();
+}
+
+// Firestore에 스케쥴 저장
+async function syncScheduleToFirestore() {
+  try {
+    if (!window._fbUser || !window._familyCode) return;
+    const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js");
+    const schedRef = doc(window._fbDb, 'families', window._familyCode, 'data', 'schedule');
+    await setDoc(schedRef, {
+      SCH: JSON.stringify(SCH),
+      FREE: JSON.stringify(FREE),
+      updatedAt: new Date().toISOString()
+    });
+    console.log('✅ 스케쥴 Firestore 저장 완료');
+  } catch(e) {
+    console.log('Firestore 저장 실패 (localStorage만 저장됨):', e.message);
+  }
+}
+
+// Firestore에서 스케쥴 불러오기 (아이용)
+async function loadScheduleFromFirestore(familyCode) {
+  try {
+    const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js");
+    const schedRef = doc(window._fbDb, 'families', familyCode, 'data', 'schedule');
+    const snap = await getDoc(schedRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data.SCH) {
+        Object.assign(SCH, JSON.parse(data.SCH));
+        localStorage.setItem(STORAGE_KEY, data.SCH);
+      }
+      if (data.FREE) {
+        Object.assign(FREE, JSON.parse(data.FREE));
+        localStorage.setItem(FREE_KEY, data.FREE);
+      }
+      drawPie();
+      console.log('✅ 스케쥴 Firestore 불러오기 완료');
+      toast('📅 스케쥴 업데이트됨!');
+    }
+  } catch(e) {
+    console.log('Firestore 불러오기 실패:', e.message);
+  }
 }
 
 // 도착 데이터 저장 (날짜별)
@@ -2831,8 +2875,10 @@ function confirmChildCode() {
   localStorage.setItem('chodinglife_linkedcode', code);
   document.getElementById('childSetup').style.display = 'none';
   applyRole('child');
-  toast('🎉 연동 완료! 반가워요!');
   goMain();
+  toast('🎉 연동 완료! 스케쥴 불러오는 중...');
+  // Firestore에서 스케쥴 불러오기
+  setTimeout(() => loadScheduleFromFirestore(code), 1000);
 }
 
 // 로그아웃 시 역할 초기화 함수
@@ -2882,6 +2928,12 @@ if (!savedRole) {
       document.getElementById('page-main').classList.add('hidden');
     } else {
       goMain();
+      // 앱 시작 시 스케쥴 자동 불러오기
+      setTimeout(() => {
+        if (typeof loadScheduleFromFirestore === 'function') {
+          loadScheduleFromFirestore(linked);
+        }
+      }, 2000);
     }
   } else {
     goMain();
@@ -2895,7 +2947,7 @@ if (!savedRole) {
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics.js";
   import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword }
     from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-  import { getFirestore }
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot }
     from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -2937,10 +2989,11 @@ if (!savedRole) {
   }
 
   // 로그인 상태 감지
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     if (user) {
       console.log('✅ 로그인됨:', user.displayName, user.email);
       window._fbUser = user;
+
       // UI 업데이트
       const before = document.getElementById('linkBefore');
       const after = document.getElementById('linkAfter');
@@ -2951,16 +3004,40 @@ if (!savedRole) {
       if (after) after.style.display = 'block';
       if (nameEl) nameEl.textContent = user.displayName || '사용자';
       if (emailEl) emailEl.textContent = user.email;
-      // 가족코드 localStorage에 저장 (없으면 새로 생성)
-      let code = localStorage.getItem('chodinglife_familycode');
-      if (!code) {
-        code = generateFamilyCode();
+
+      // Firestore에서 가족코드 불러오기 (없으면 새로 생성해서 저장)
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        let code;
+        if (userSnap.exists() && userSnap.data().familyCode) {
+          // 기존 코드 사용
+          code = userSnap.data().familyCode;
+        } else {
+          // 새 코드 생성 후 Firestore 저장
+          code = generateFamilyCode();
+          await setDoc(userRef, {
+            familyCode: code,
+            email: user.email,
+            displayName: user.displayName || '사용자',
+            createdAt: new Date().toISOString()
+          }, { merge: true });
+        }
         localStorage.setItem('chodinglife_familycode', code);
+        if (codeEl) codeEl.textContent = code;
+        window._familyCode = code;
+        console.log('👨‍👩‍👧 가족코드:', code);
+      } catch(e) {
+        console.error('Firestore 오류:', e);
+        // Firestore 실패시 localStorage 폴백
+        let code = localStorage.getItem('chodinglife_familycode');
+        if (!code) { code = generateFamilyCode(); localStorage.setItem('chodinglife_familycode', code); }
+        if (codeEl) codeEl.textContent = code;
       }
-      if (codeEl) codeEl.textContent = code;
     } else {
       console.log('🔒 로그아웃 상태');
       window._fbUser = null;
+      window._familyCode = null;
       // UI 초기화
       const before = document.getElementById('linkBefore');
       const after = document.getElementById('linkAfter');
