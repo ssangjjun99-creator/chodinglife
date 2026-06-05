@@ -189,6 +189,35 @@ body{background:#e8f4ff;}
   </div>
 </div>
 
+<!-- 부모 로그인 화면 -->
+<div id="parentLogin" class="page" style="display:none;align-items:center;justify-content:center;background:linear-gradient(170deg,#e8f7ff,#d4f0ff 50%,#e4faef);">
+  <div style="text-align:center;padding:30px 24px;width:100%;max-width:360px">
+    <div style="font-size:48px;margin-bottom:12px">👨‍👩‍👧</div>
+    <div style="font-size:20px;font-weight:900;color:#0d5a7a;margin-bottom:6px">부모님 로그인</div>
+    <div style="font-size:13px;color:#5aaac8;margin-bottom:28px">로그인 후 가족코드로 아이와 연동해요!</div>
+
+    <input id="parentEmail" type="email" placeholder="이메일 주소" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid #d4eaf5;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px;box-sizing:border-box">
+    <input id="parentPw" type="password" placeholder="비밀번호 (6자리 이상)" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid #d4eaf5;font-size:14px;font-family:inherit;outline:none;margin-bottom:14px;box-sizing:border-box">
+
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button onclick="doEmailLogin()" style="flex:1;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#3a9bd5,#2ec4a9);color:white;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">로그인</button>
+      <button onclick="doEmailSignup()" style="flex:1;padding:13px;border-radius:12px;border:1.5px solid #3a9bd5;background:white;color:#3a9bd5;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">회원가입</button>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <div style="flex:1;height:1px;background:#d4eaf5"></div>
+      <div style="font-size:11px;color:#8aaac8">또는</div>
+      <div style="flex:1;height:1px;background:#d4eaf5"></div>
+    </div>
+
+    <button onclick="doGoogleLogin()" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid #d4eaf5;background:white;color:#444;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px">
+      <span style="font-size:16px">G</span> 구글로 로그인하기
+    </button>
+
+    <div onclick="goBackToRoleSelect()" style="font-size:12px;color:#8aaac8;cursor:pointer">← 처음으로</div>
+  </div>
+</div>
+
 <!-- 아이 코드 입력 화면 -->
 <div id="childSetup" class="page" style="display:none;align-items:center;justify-content:center;background:linear-gradient(170deg,#e8f7ff,#d4f0ff 50%,#e4faef);">
   <div style="text-align:center;padding:30px 24px;width:100%;max-width:360px">
@@ -2779,15 +2808,20 @@ function applyRole(role) {
 }
 
 function selectRole(role) {
-  localStorage.setItem('chodinglife_role', role);
   document.getElementById('roleSelect').style.display = 'none';
   if (role === 'parent') {
-    document.getElementById('childSetup').style.display = 'none';
-    applyRole('parent');
-    goMain();
+    // 부모 → 로그인 화면으로
+    document.getElementById('parentLogin').style.display = 'flex';
   } else {
+    // 아이 → 코드 입력 화면으로
+    localStorage.setItem('chodinglife_role', 'child');
     document.getElementById('childSetup').style.display = 'flex';
   }
+}
+
+function goBackToRoleSelect() {
+  document.getElementById('parentLogin').style.display = 'none';
+  document.getElementById('roleSelect').style.display = 'flex';
 }
 
 function confirmChildCode() {
@@ -2937,8 +2971,10 @@ if (!savedRole) {
 
   // 이메일 회원가입
   window.doEmailSignup = async () => {
-    const email = document.getElementById('loginEmail').value.trim();
-    const pw = document.getElementById('loginPw').value.trim();
+    const emailEl = document.getElementById('parentEmail') || document.getElementById('loginEmail');
+    const pwEl = document.getElementById('parentPw') || document.getElementById('loginPw');
+    const email = emailEl ? emailEl.value.trim() : '';
+    const pw = pwEl ? pwEl.value.trim() : '';
     if (!email || !pw) { toast('이메일과 비밀번호를 입력해주세요!'); return; }
     if (pw.length < 6) { toast('비밀번호는 6자리 이상이에요!'); return; }
     try {
@@ -2954,11 +2990,18 @@ if (!savedRole) {
 
   // 이메일 로그인
   window.doEmailLogin = async () => {
-    const email = document.getElementById('loginEmail').value.trim();
-    const pw = document.getElementById('loginPw').value.trim();
+    const emailEl = document.getElementById('parentEmail') || document.getElementById('loginEmail');
+    const pwEl = document.getElementById('parentPw') || document.getElementById('loginPw');
+    const email = emailEl ? emailEl.value.trim() : '';
+    const pw = pwEl ? pwEl.value.trim() : '';
     if (!email || !pw) { toast('이메일과 비밀번호를 입력해주세요!'); return; }
     try {
       await signInWithEmailAndPassword(auth, email, pw);
+      // 로그인 성공 → 부모 역할 저장 + 화면 전환
+      localStorage.setItem('chodinglife_role', 'parent');
+      document.getElementById('parentLogin').style.display = 'none';
+      applyRole('parent');
+      goMain();
       toast('✅ 로그인 완료!');
     } catch(e) {
       if (e.code === 'auth/user-not-found') toast('등록되지 않은 이메일이에요!');
