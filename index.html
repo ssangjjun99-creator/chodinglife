@@ -344,7 +344,7 @@ body{background:#e8f4ff;}
 <div class="page hidden" id="page-homework">
   <div class="sub-hd"><div class="back-btn" onclick="goMain()">‹</div><div class="sub-ttl">📚 숙제완료</div><div class="sub-av">📝</div></div>
   <div class="sp">
-    <div class="tbr"><button class="tb on" onclick="hwTab(this,'c')">👧 아이</button><button class="tb" onclick="hwTab(this,'p')">👨‍👩‍👧 부모님</button></div>
+    <div class="tbr" id="hwTabBar"><button class="tb on" onclick="hwTab(this,'c')">👧 아이</button><button class="tb" onclick="hwTab(this,'p')">👨‍👩‍👧 부모님</button></div>
 
     <!-- 아이 탭 -->
     <div id="hwC">
@@ -718,7 +718,26 @@ function goPage(pid,nid){
       chkDate.textContent=`${yy}.${mm}.${dd} · 시간이 되면 버튼이 활성화돼요!`;
     }
   }
-  if(pid==='page-homework') drawHwSubjects();
+  if(pid==='page-homework') {
+    // 역할에 따라 탭 분리
+    const role = localStorage.getItem('chodinglife_role');
+    const tabBar = document.getElementById('hwTabBar');
+    const hwC = document.getElementById('hwC');
+    const hwP = document.getElementById('hwP');
+    if (role === 'child') {
+      // 아이: 아이탭만 보임
+      if (tabBar) tabBar.style.display = 'none';
+      if (hwC) hwC.style.display = 'block';
+      if (hwP) hwP.style.display = 'none';
+      drawHwSubjects();
+    } else {
+      // 부모: 부모탭만 보임
+      if (tabBar) tabBar.style.display = 'none';
+      if (hwC) hwC.style.display = 'none';
+      if (hwP) hwP.style.display = 'block';
+      drawHwParent();
+    }
+  }
   if(pid==='page-points'){ updPtsArriveList(); updPtsHwList(); updPtsBonusList(); }
 }
 
