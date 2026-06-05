@@ -463,6 +463,19 @@ body{background:#e8f4ff;}
           <div class="rwc" onclick="cycR(2)"><div style="font-size:22px" id="rE2">🎬</div><div style="font-size:10px;font-weight:700;color:#1a3a5c;margin-top:2px" id="rN2">영화 보기</div><div style="font-size:9px;color:#8aaac8;margin-top:1px">탭해서 변경</div></div>
         </div>
       </div>
+      <!-- 아이 사진 설정 카드 -->
+      <div class="card" style="margin-top:10px" id="childPhotoCard">
+        <div class="ch"><span class="ci">📸</span><span class="ct">아이 사진 설정</span></div>
+        <div style="font-size:12px;color:#5aaac8;margin-bottom:12px">파이차트 중앙에 표시될 아이 사진이에요!</div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div id="childPhotoPreview" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#f0c8a0,#e8a070);display:flex;align-items:center;justify-content:center;font-size:36px;overflow:hidden;flex-shrink:0">🐶</div>
+          <div style="flex:1">
+            <button onclick="triggerChildProfilePhoto()" style="width:100%;padding:10px;border-radius:10px;border:1.5px dashed #3a9bd5;background:#f0f8ff;color:#3a9bd5;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;margin-bottom:6px">📷 사진 선택하기</button>
+            <button onclick="removeChildProfilePhoto()" style="width:100%;padding:8px;border-radius:10px;border:1.5px solid #f0d4d4;background:#fff;color:#e05555;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑️ 사진 삭제</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 아이랑 연동하기 카드 -->
       <div class="card" style="margin-top:10px" id="linkCard">
         <div class="ch"><span class="ci">🔗</span><span class="ct">아이랑 연동하기</span></div>
@@ -1088,7 +1101,18 @@ function drawH(){
 
   ctx.save();
   ctx.beginPath(); ctx.arc(cx,cy,innerR-2,0,Math.PI*2); ctx.clip();
-  if(_dogImg.complete&&_dogImg.naturalWidth>0){
+  if(window._childPhotoSrc) {
+    // 아이 사진 있으면 표시
+    if(!window._childPhotoImg || window._childPhotoImg._src !== window._childPhotoSrc) {
+      window._childPhotoImg = new Image();
+      window._childPhotoImg._src = window._childPhotoSrc;
+      window._childPhotoImg.onload = () => drawPie();
+      window._childPhotoImg.src = window._childPhotoSrc;
+    }
+    if(window._childPhotoImg.complete && window._childPhotoImg.naturalWidth > 0) {
+      ctx.drawImage(window._childPhotoImg, cx-innerR+2, cy-innerR+2, (innerR-2)*2, (innerR-2)*2);
+    }
+  } else if(_dogImg.complete&&_dogImg.naturalWidth>0){
     ctx.drawImage(_dogImg,cx-innerR+2,cy-innerR+2,(innerR-2)*2,(innerR-2)*2);
   } else {
     ctx.font=`${innerR*1.1}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -2145,7 +2169,7 @@ function compressAndSavePhoto(key, ds, file, onDone){
   const reader = new FileReader();
   reader.onload = e => {
     const img = new Image();
-    img.onload = () => {
+    img.onload = async () => {
       const MAX = 600;
       let w = img.width, h = img.height;
       if(w > MAX || h > MAX){
@@ -2156,15 +2180,36 @@ function compressAndSavePhoto(key, ds, file, onDone){
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       const compressed = canvas.toDataURL('image/jpeg', 0.6);
+
+      // 1. localStorage에 먼저 저장 (빠른 표시)
       hwPhotos[key+'_'+ds] = compressed;
       saveHwPhotos();
-      // hwData에도 photo 플래그만 저장
       if(!hwData[key]) hwData[key]={};
       if(!hwData[key][ds]) hwData[key][ds]={status:'none',memo:''};
       hwData[key][ds].hasPhoto = true;
       saveHw();
-      toast('📷 사진이 저장됐어요! ✅');
+      toast('📷 사진 저장됐어요! ✅');
       if(onDone) onDone();
+
+      // 2. Firebase Storage에도 업로드 (백그라운드)
+      try {
+        if(!window._fbStorage || !window._familyCode) return;
+        const { ref, uploadString, getDownloadURL } = window._storageImports || {};
+        if(!ref || !uploadString) return;
+        const path = `families/${window._familyCode}/hw_photos/${key}_${ds}.jpg`;
+        const storageRef = ref(window._fbStorage, path);
+        await uploadString(storageRef, compressed, 'data_url');
+        const url = await getDownloadURL(storageRef);
+        // Firestore에 사진 URL 저장
+        if(window._fsImports && window._fbDb) {
+          const { doc, setDoc } = window._fsImports;
+          const photoRef = doc(window._fbDb, 'families', window._familyCode, 'hw_photos', `${key}_${ds}`);
+          await setDoc(photoRef, { url, key, ds, updatedAt: new Date().toISOString() });
+        }
+        console.log('✅ 숙제 사진 Storage 업로드 완료');
+      } catch(e) {
+        console.log('Storage 업로드 실패 (로컬만 저장됨):', e.message);
+      }
     };
     img.src = e.target.result;
   };
@@ -2890,12 +2935,125 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 
 function updDB(){} // 위클리 방식으로 교체되어 stub 유지
 
-// ── 초기화 ──
+// ── 아이 프로필 사진 ──
+function triggerChildProfilePhoto() {
+  const old = document.getElementById('_childProfileInput');
+  if(old) old.remove();
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.id = '_childProfileInput';
+  inp.style.cssText = 'position:fixed;top:-999px;left:-999px;opacity:0;';
+  inp.onchange = () => {
+    const file = inp.files[0];
+    if(!file){ inp.remove(); return; }
+    const reader = new FileReader();
+    reader.onload = async e => {
+      const img = new Image();
+      img.onload = async () => {
+        // 압축
+        const MAX = 300;
+        let w = img.width, h = img.height;
+        if(w > MAX || h > MAX){
+          if(w > h){ h = Math.round(h*MAX/w); w = MAX; }
+          else { w = Math.round(w*MAX/h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const compressed = canvas.toDataURL('image/jpeg', 0.7);
+
+        // 미리보기 업데이트
+        updateChildPhotoPreview(compressed);
+        localStorage.setItem('chodinglife_child_photo', compressed);
+        toast('📷 사진 저장됐어요!');
+
+        // Firebase Storage + Firestore 저장
+        try {
+          if(!window._fbStorage || !window._familyCode) return;
+          const { ref, uploadString, getDownloadURL } = window._storageImports || {};
+          if(!ref) return;
+          const storageRef = ref(window._fbStorage, `families/${window._familyCode}/child_profile.jpg`);
+          await uploadString(storageRef, compressed, 'data_url');
+          const url = await getDownloadURL(storageRef);
+          if(window._fsImports && window._fbDb) {
+            const { doc, setDoc } = window._fsImports;
+            const famRef = doc(window._fbDb, 'families', window._familyCode, 'data', 'profile');
+            await setDoc(famRef, { childPhotoUrl: url, updatedAt: new Date().toISOString() });
+          }
+          console.log('✅ 아이 사진 Storage 업로드 완료');
+        } catch(e) {
+          console.log('아이 사진 Storage 실패:', e.message);
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    inp.remove();
+  };
+  document.body.appendChild(inp);
+  inp.click();
+}
+
+function updateChildPhotoPreview(src) {
+  const preview = document.getElementById('childPhotoPreview');
+  if(!preview) return;
+  if(src) {
+    preview.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else {
+    preview.innerHTML = '🐶';
+  }
+  // 파이차트 중앙도 업데이트
+  window._childPhotoSrc = src;
+  drawPie();
+}
+
+function removeChildProfilePhoto() {
+  if(!confirm('아이 사진을 삭제할까요?')) return;
+  localStorage.removeItem('chodinglife_child_photo');
+  window._childPhotoSrc = null;
+  updateChildPhotoPreview(null);
+  toast('사진 삭제됐어요!');
+  // Storage에서도 삭제
+  try {
+    if(!window._fbStorage || !window._familyCode) return;
+    const { ref, deleteObject } = window._storageImports || {};
+    if(!ref || !deleteObject) return;
+    const storageRef = ref(window._fbStorage, `families/${window._familyCode}/child_profile.jpg`);
+    deleteObject(storageRef).catch(e => console.log('Storage 삭제:', e.message));
+  } catch(e) {}
+}
+
+// 앱 시작 시 아이 사진 불러오기
+function loadChildProfilePhoto() {
+  // localStorage 먼저
+  const local = localStorage.getItem('chodinglife_child_photo');
+  if(local) {
+    window._childPhotoSrc = local;
+    updateChildPhotoPreview(local);
+    return;
+  }
+  // Firestore에서 URL 불러오기
+  if(!window._familyCode || !window._fbDb || !window._fsImports) return;
+  const { doc, getDoc } = window._fsImports;
+  const famRef = doc(window._fbDb, 'families', window._familyCode, 'data', 'profile');
+  getDoc(famRef).then(snap => {
+    if(snap.exists() && snap.data().childPhotoUrl) {
+      const url = snap.data().childPhotoUrl;
+      window._childPhotoSrc = url;
+      updateChildPhotoPreview(url);
+      localStorage.setItem('chodinglife_child_photo', url);
+    }
+  }).catch(e => console.log('프로필 불러오기 실패:', e.message));
+}
 loadAndResetScores();
 tick();setInterval(tick,1000);
 document.getElementById('amB').classList.toggle('on',curAP==='am');
 document.getElementById('pmB').classList.toggle('on',curAP==='pm');
 setDay(curD);
+// 아이 사진 로컬 먼저 로드
+const _localChildPhoto = localStorage.getItem('chodinglife_child_photo');
+if(_localChildPhoto) { window._childPhotoSrc = _localChildPhoto; }
 
 // ── 역할 선택 ──
 function applyRole(role) {
@@ -3006,6 +3164,8 @@ if (!savedRole) {
     from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, onSnapshot }
     from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+  import { getStorage, ref, uploadString, uploadBytes, getDownloadURL, deleteObject }
+    from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDUeBPz6VuMFAV3H7gF-VO9OeZiaxLW07Y",
@@ -3022,16 +3182,20 @@ if (!savedRole) {
   const analytics = getAnalytics(app);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  const storage = getStorage(app);
   const provider = new GoogleAuthProvider();
 
   // 전역 접근 가능하도록 window에 등록
   window._fbAuth = auth;
   window._fbDb = db;
+  window._fbStorage = storage;
   window._fbProvider = provider;
   window._fbSignIn = () => signInWithRedirect(auth, provider);
   window._fbSignOut = () => signOut(auth);
-  // Firestore 함수 전역 등록 (일반 스크립트에서 접근용)
+  // Firestore 함수 전역 등록
   window._fsImports = { doc, setDoc, getDoc, onSnapshot };
+  // Storage 함수 전역 등록
+  window._storageImports = { ref, uploadString, uploadBytes, getDownloadURL, deleteObject };
 
   // 리다이렉트 후 결과 처리
   getRedirectResult(auth).then((result) => {
@@ -3086,6 +3250,8 @@ if (!savedRole) {
         if (codeEl) codeEl.textContent = code;
         window._familyCode = code;
         console.log('👨‍👩‍👧 가족코드:', code);
+        // 아이 사진 Firestore에서 불러오기
+        setTimeout(() => loadChildProfilePhoto(), 500);
       } catch(e) {
         console.error('Firestore 오류:', e);
         // Firestore 실패시 localStorage 폴백
