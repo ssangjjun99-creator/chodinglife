@@ -596,7 +596,8 @@ function save(){
 async function syncScheduleToFirestore() {
   try {
     if (!window._fbUser || !window._familyCode) return;
-    const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js");
+    if (!window._fsImports) return;
+    const { doc, setDoc } = window._fsImports;
     const schedRef = doc(window._fbDb, 'families', window._familyCode, 'data', 'schedule');
     await setDoc(schedRef, {
       SCH: JSON.stringify(SCH),
@@ -609,10 +610,45 @@ async function syncScheduleToFirestore() {
   }
 }
 
-// Firestore에서 스케쥴 불러오기 (아이용)
+// Firestore에서 스케쥴 실시간 감지 (아이용)
+function watchScheduleFromFirestore(familyCode) {
+  try {
+    if (!window._fbDb) { setTimeout(() => watchScheduleFromFirestore(familyCode), 1000); return; }
+    const { doc, onSnapshot } = window._fsImports || {};
+    if (!doc || !onSnapshot) { setTimeout(() => watchScheduleFromFirestore(familyCode), 1000); return; }
+    const schedRef = doc(window._fbDb, 'families', familyCode, 'data', 'schedule');
+    // 실시간 감지 시작
+    const unsubscribe = onSnapshot(schedRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.SCH) {
+          const newSCH = JSON.parse(data.SCH);
+          Object.assign(SCH, newSCH);
+          localStorage.setItem(STORAGE_KEY, data.SCH);
+        }
+        if (data.FREE) {
+          const newFREE = JSON.parse(data.FREE);
+          Object.assign(FREE, newFREE);
+          localStorage.setItem(FREE_KEY, data.FREE);
+        }
+        drawPie();
+        console.log('🔄 스케쥴 실시간 업데이트됨!');
+      }
+    }, (e) => {
+      console.log('실시간 감지 오류:', e.message);
+    });
+    window._schedUnsubscribe = unsubscribe;
+    console.log('👀 스케쥴 실시간 감지 시작!');
+  } catch(e) {
+    console.log('실시간 감지 시작 실패:', e.message);
+  }
+}
+
 async function loadScheduleFromFirestore(familyCode) {
   try {
-    const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js");
+    if (!window._fbDb) { setTimeout(() => loadScheduleFromFirestore(familyCode), 1000); return; }
+    const { doc, getDoc } = window._fsImports || {};
+    if (!doc || !getDoc) { setTimeout(() => loadScheduleFromFirestore(familyCode), 1000); return; }
     const schedRef = doc(window._fbDb, 'families', familyCode, 'data', 'schedule');
     const snap = await getDoc(schedRef);
     if (snap.exists()) {
@@ -629,6 +665,8 @@ async function loadScheduleFromFirestore(familyCode) {
       console.log('✅ 스케쥴 Firestore 불러오기 완료');
       toast('📅 스케쥴 업데이트됨!');
     }
+    // 불러온 후 실시간 감지 시작
+    watchScheduleFromFirestore(familyCode);
   } catch(e) {
     console.log('Firestore 불러오기 실패:', e.message);
   }
@@ -2973,6 +3011,8 @@ if (!savedRole) {
   window._fbProvider = provider;
   window._fbSignIn = () => signInWithRedirect(auth, provider);
   window._fbSignOut = () => signOut(auth);
+  // Firestore 함수 전역 등록 (일반 스크립트에서 접근용)
+  window._fsImports = { doc, setDoc, getDoc, onSnapshot };
 
   // 리다이렉트 후 결과 처리
   getRedirectResult(auth).then((result) => {
