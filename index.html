@@ -2344,9 +2344,11 @@ function compressAndSavePhoto(key, ds, file, onDone){
       saveHwPhotos();
       if(!hwData[key]) hwData[key]={};
       if(!hwData[key][ds]) hwData[key][ds]={status:'none',memo:''};
+      // ⚠️ status는 건드리지 않음! 사진만 저장
       hwData[key][ds].hasPhoto = true;
-      saveHw();
-      toast('📷 사진 저장됐어요! ✅');
+      // saveHw() 대신 사진 플래그만 별도로 저장
+      localStorage.setItem('chodinglife_hw_current', JSON.stringify(hwData));
+      toast('📷 사진 저장됐어요!');
       if(onDone) onDone();
 
       // 2. Firebase Storage에도 업로드 (백그라운드)
@@ -3459,8 +3461,19 @@ if (!savedRole) {
         if (codeEl) codeEl.textContent = code;
         window._familyCode = code;
         console.log('👨‍👩‍👧 가족코드:', code);
-        // 아이 사진 Firestore에서 불러오기
-        setTimeout(() => loadChildProfilePhoto(), 500);
+        // 아이 사진 + 숙제 실시간 감지 시작
+        setTimeout(() => {
+          loadChildProfilePhoto();
+          // 부모: 숙제 실시간 감지 시작 (아이 확인요청 반영)
+          if (typeof watchHwFromFirestore === 'function') {
+            watchHwFromFirestore(code);
+          }
+          if (typeof loadHwPhotoUrls === 'function') {
+            loadHwPhotoUrls(code);
+          }
+          // 앱 시작 시 스케쥴 자동 저장
+          syncScheduleToFirestore();
+        }, 500);
       } catch(e) {
         console.error('Firestore 오류:', e);
         // Firestore 실패시 localStorage 폴백
