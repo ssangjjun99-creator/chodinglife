@@ -752,9 +752,10 @@ function goPage(pid,nid){
     }
   }
   if(pid==='page-points'){
-    // Firestore에서 최신 점수 불러오기
+    const role = localStorage.getItem('chodinglife_role');
     const familyCode = window._familyCode || localStorage.getItem('chodinglife_familycode') || localStorage.getItem('chodinglife_linkedcode');
-    if(familyCode && window._fbDb && window._fsImports) {
+    // 아이만 Firestore에서 최신 점수 불러오기
+    if(role !== 'parent' && familyCode && window._fbDb && window._fsImports) {
       const { doc, getDoc } = window._fsImports;
       getDoc(doc(window._fbDb, 'families', familyCode, 'data', 'scores')).then(snap => {
         if(snap.exists()) {
@@ -3172,6 +3173,9 @@ async function syncScoresToFirestore(scoreData) {
 
 // Firestore 포인트 실시간 감지
 function watchScoresFromFirestore(familyCode) {
+  // 아이만 포인트 실시간 감지 (부모는 중복 방지)
+  const role = localStorage.getItem('chodinglife_role');
+  if (role === 'parent') return;
   try {
     if (!window._fbDb || !window._fsImports) return;
     const { doc, onSnapshot } = window._fsImports;
