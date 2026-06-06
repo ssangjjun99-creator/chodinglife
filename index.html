@@ -1958,7 +1958,7 @@ function watchHwFromFirestore(familyCode) {
 // 아이도 숙제 저장 시 Firestore에 올리기 (양방향)
 async function syncHwToFirestoreChild(hwObj) {
   try {
-    const familyCode = localStorage.getItem('chodinglife_linkedcode');
+    const familyCode = window._familyCode || localStorage.getItem('chodinglife_linkedcode');
     if (!familyCode || !window._fsImports || !window._fbDb) return;
     const { doc, setDoc } = window._fsImports;
     const now = new Date().toISOString();
@@ -2353,26 +2353,26 @@ function compressAndSavePhoto(key, ds, file, onDone){
 
       // 2. Firebase Storage에도 업로드 (백그라운드)
       try {
-        if(!window._fbStorage || !window._familyCode) return;
+        const familyCode = window._familyCode || localStorage.getItem('chodinglife_familycode') || localStorage.getItem('chodinglife_linkedcode');
+        if(!window._fbStorage || !familyCode) return;
+        if(!window._familyCode) window._familyCode = familyCode;
         const { ref, uploadString, getDownloadURL } = window._storageImports || {};
         if(!ref || !uploadString) return;
-        const path = `families/${window._familyCode}/hw_photos/${key}_${ds}.jpg`;
+        const path = `families/${familyCode}/hw_photos/${key}_${ds}.jpg`;
         const storageRef = ref(window._fbStorage, path);
         await uploadString(storageRef, compressed, 'data_url');
         const url = await getDownloadURL(storageRef);
         // Firestore에 사진 URL 저장 (양방향 공유용)
         if(window._fsImports && window._fbDb) {
           const { doc, setDoc, getDoc } = window._fsImports;
-          // 기존 URLs 불러와서 병합
-          const urlsRef = doc(window._fbDb, 'families', window._familyCode, 'data', 'hw_photo_urls');
+          const urlsRef = doc(window._fbDb, 'families', familyCode, 'data', 'hw_photo_urls');
           const existing = await getDoc(urlsRef);
           const urls = existing.exists() ? (existing.data().urls || {}) : {};
           urls[`${key}_${ds}`] = url;
           await setDoc(urlsRef, { urls, updatedAt: new Date().toISOString() });
-          // 로컬 캐시도 업데이트
           if(!window._hwPhotoUrls) window._hwPhotoUrls = {};
           window._hwPhotoUrls[`${key}_${ds}`] = url;
-          // hwData도 Firestore에 저장 (hasPhoto 플래그 포함)
+          // hwData도 Firestore에 저장
           if(!hwData[key]) hwData[key] = {};
           if(!hwData[key][ds]) hwData[key][ds] = {status:'none', memo:''};
           hwData[key][ds].hasPhoto = true;
