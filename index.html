@@ -1858,8 +1858,15 @@ function saveHw(){
     });
   });
   localStorage.setItem('chodinglife_hw_current', JSON.stringify(noPhoto));
-  // Firestore에도 저장 (부모만)
-  syncHwToFirestore(noPhoto);
+  const now = new Date().toISOString();
+  localStorage.setItem('chodinglife_hw_updated', now);
+  // Firestore에도 저장 (부모/아이 둘 다)
+  const role = localStorage.getItem('chodinglife_role');
+  if (role === 'parent') {
+    syncHwToFirestore(noPhoto);
+  } else if (role === 'child') {
+    syncHwToFirestoreChild(noPhoto);
+  }
 }
 
 // Firestore에 숙제 저장 (부모만)
@@ -1880,7 +1887,7 @@ async function syncHwToFirestore(hwObj) {
   }
 }
 
-// Firestore에서 숙제 불러오기 (아이)
+// Firestore에서 숙제 불러오기 (아이) - 부모 데이터 우선
 async function loadHwFromFirestore(familyCode) {
   try {
     if (!window._fbDb || !window._fsImports) return;
@@ -1889,12 +1896,21 @@ async function loadHwFromFirestore(familyCode) {
     const snap = await getDoc(hwRef);
     if (snap.exists() && snap.data().hwData) {
       const loaded = JSON.parse(snap.data().hwData);
-      Object.assign(hwData, loaded);
-      localStorage.setItem('chodinglife_hw_current', snap.data().hwData);
-      drawHwSubjects();
-      console.log('✅ 숙제 Firestore 불러오기 완료');
+      const remoteTime = snap.data().updatedAt || '';
+      // 처음 연동이거나 부모 데이터가 더 최신이면 무조건 덮어씀
+      const localTime = localStorage.getItem('chodinglife_hw_updated') || '';
+      const isFirstSync = !localStorage.getItem('chodinglife_hw_synced');
+      if (isFirstSync || remoteTime > localTime) {
+        Object.assign(hwData, loaded);
+        localStorage.setItem('chodinglife_hw_current', snap.data().hwData);
+        localStorage.setItem('chodinglife_hw_updated', remoteTime);
+        localStorage.setItem('chodinglife_hw_synced', 'true');
+        drawHwSubjects();
+        toast('📚 숙제 데이터 업데이트됐어요!');
+        console.log('✅ 숙제 Firestore 불러오기 완료');
+      }
     }
-    // 실시간 감지
+    // 실시간 감지 시작
     watchHwFromFirestore(familyCode);
   } catch(e) {
     console.log('숙제 불러오기 실패:', e.message);
@@ -1910,13 +1926,42 @@ function watchHwFromFirestore(familyCode) {
     onSnapshot(hwRef, (snap) => {
       if (snap.exists() && snap.data().hwData) {
         const loaded = JSON.parse(snap.data().hwData);
-        Object.assign(hwData, loaded);
-        localStorage.setItem('chodinglife_hw_current', snap.data().hwData);
-        console.log('🔄 숙제 실시간 업데이트!');
+        // 충돌 해결: updatedAt 기준으로 최신 데이터 우선
+        const remoteTime = snap.data().updatedAt || '';
+        const localTime = localStorage.getItem('chodinglife_hw_updated') || '';
+        if (remoteTime > localTime) {
+          Object.assign(hwData, loaded);
+          localStorage.setItem('chodinglife_hw_current', snap.data().hwData);
+          localStorage.setItem('chodinglife_hw_updated', remoteTime);
+          // UI 업데이트
+          const role = localStorage.getItem('chodinglife_role');
+          if (role === 'child') drawHwSubjects();
+          else drawHwParent();
+          console.log('🔄 숙제 실시간 업데이트!');
+        }
       }
     });
   } catch(e) {
     console.log('숙제 실시간 감지 실패:', e.message);
+  }
+}
+
+// 아이도 숙제 저장 시 Firestore에 올리기 (양방향)
+async function syncHwToFirestoreChild(hwObj) {
+  try {
+    const familyCode = localStorage.getItem('chodinglife_linkedcode');
+    if (!familyCode || !window._fsImports || !window._fbDb) return;
+    const { doc, setDoc } = window._fsImports;
+    const now = new Date().toISOString();
+    const hwRef = doc(window._fbDb, 'families', familyCode, 'data', 'homework');
+    await setDoc(hwRef, {
+      hwData: JSON.stringify(hwObj),
+      updatedAt: now
+    }, { merge: true });
+    localStorage.setItem('chodinglife_hw_updated', now);
+    console.log('✅ 아이 숙제 Firestore 저장 완료');
+  } catch(e) {
+    console.log('아이 숙제 Firestore 저장 실패:', e.message);
   }
 }
 
@@ -2640,9 +2685,17 @@ function attachPhotoParent(key, ds, input){
 
 function parentApproveHw(key, ds){
   if(!hwData[key]) hwData[key]={};
-  // 이미 완료된 경우 중복 포인트 방지
+  // 이미 완료된 경우 → 취소 확인
   if((hwData[key][ds]||{}).status === 'done'){
-    toast('이미 완료 처리됐어요!'); return;
+    if(!confirm('✅ 완료를 취소할까요?\n포인트 20점이 차감돼요.')) return;
+    hwData[key][ds] = {...(hwData[key][ds]||{}), status:'none'};
+    wkS=Math.max(0,wkS-20); totS=Math.max(0,totS-20); todayS=Math.max(0,todayS-20); updSc();
+    // 로그 삭제
+    const logKey = key + '_' + ds;
+    if(hwLog && hwLog[logKey]) { delete hwLog[logKey]; localStorage.setItem('chodinglife_hw_log', JSON.stringify(hwLog)); }
+    saveHw(); updPtsHwList();
+    toast('↩️ 완료 취소됐어요. -20점');
+    drawHwParent(); drawHwSubjects(); return;
   }
   hwData[key][ds] = {...(hwData[key][ds]||{}), status:'done'};
   wkS+=20; totS+=20; todayS+=20; updSc();
