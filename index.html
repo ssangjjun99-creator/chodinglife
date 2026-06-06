@@ -1926,17 +1926,26 @@ function watchHwFromFirestore(familyCode) {
     onSnapshot(hwRef, (snap) => {
       if (snap.exists() && snap.data().hwData) {
         const loaded = JSON.parse(snap.data().hwData);
-        // 충돌 해결: updatedAt 기준으로 최신 데이터 우선
         const remoteTime = snap.data().updatedAt || '';
         const localTime = localStorage.getItem('chodinglife_hw_updated') || '';
         if (remoteTime > localTime) {
-          Object.assign(hwData, loaded);
-          localStorage.setItem('chodinglife_hw_current', snap.data().hwData);
+          // 내 데이터와 병합 (상태만 업데이트, 내 로컬 데이터 유지)
+          Object.keys(loaded).forEach(k => {
+            if (!hwData[k]) hwData[k] = {};
+            Object.keys(loaded[k]).forEach(ds => {
+              if (!hwData[k][ds]) hwData[k][ds] = {};
+              // 상태/메모만 업데이트 (사진은 별도 처리)
+              hwData[k][ds].status = loaded[k][ds].status;
+              if (loaded[k][ds].memo) hwData[k][ds].memo = loaded[k][ds].memo;
+              if (loaded[k][ds].hasPhoto) hwData[k][ds].hasPhoto = loaded[k][ds].hasPhoto;
+            });
+          });
+          localStorage.setItem('chodinglife_hw_current', JSON.stringify(hwData));
           localStorage.setItem('chodinglife_hw_updated', remoteTime);
           // UI 업데이트
           const role = localStorage.getItem('chodinglife_role');
           if (role === 'child') drawHwSubjects();
-          else drawHwParent();
+          else { drawHwParent(); drawHwSubjects(); }
           console.log('🔄 숙제 실시간 업데이트!');
         }
       }
@@ -1984,8 +1993,50 @@ function saveHwExtra(){
 }
 
 // 사진 가져오기 (현재주 + 지난주)
-function getHwPhoto(key, ds){ return hwPhotos[key+'_'+ds] || ''; }
+function getHwPhoto(key, ds){ 
+  // 로컬 사진 우선, 없으면 Firestore URL 사용
+  return hwPhotos[key+'_'+ds] || window._hwPhotoUrls?.[key+'_'+ds] || ''; 
+}
 function getHwLastPhoto(key, ds){ return hwLastPhotos[key+'_'+ds] || ''; }
+
+// Firestore에서 사진 URL 불러오기 (양방향)
+async function loadHwPhotoUrls(familyCode) {
+  try {
+    if (!window._fbDb || !window._fsImports) return;
+    const { doc, getDoc } = window._fsImports;
+    const photoRef = doc(window._fbDb, 'families', familyCode, 'data', 'hw_photo_urls');
+    const snap = await getDoc(photoRef);
+    if (snap.exists()) {
+      window._hwPhotoUrls = snap.data().urls || {};
+      console.log('✅ 사진 URL 불러오기 완료');
+    }
+    // 실시간 감지
+    watchHwPhotoUrls(familyCode);
+  } catch(e) {
+    console.log('사진 URL 불러오기 실패:', e.message);
+  }
+}
+
+// 사진 URL 실시간 감지
+function watchHwPhotoUrls(familyCode) {
+  try {
+    if (!window._fbDb || !window._fsImports) return;
+    const { doc, onSnapshot } = window._fsImports;
+    const photoRef = doc(window._fbDb, 'families', familyCode, 'data', 'hw_photo_urls');
+    onSnapshot(photoRef, (snap) => {
+      if (snap.exists()) {
+        window._hwPhotoUrls = snap.data().urls || {};
+        // UI 업데이트
+        const role = localStorage.getItem('chodinglife_role');
+        if (role === 'child') drawHwSubjects();
+        else drawHwParent();
+        console.log('🔄 사진 URL 실시간 업데이트!');
+      }
+    });
+  } catch(e) {
+    console.log('사진 URL 감지 실패:', e.message);
+  }
+}
 
 // 이번주 날짜 배열 (월~일) 반환
 function getThisWeekDates(){
@@ -2307,11 +2358,18 @@ function compressAndSavePhoto(key, ds, file, onDone){
         const storageRef = ref(window._fbStorage, path);
         await uploadString(storageRef, compressed, 'data_url');
         const url = await getDownloadURL(storageRef);
-        // Firestore에 사진 URL 저장
+        // Firestore에 사진 URL 저장 (양방향 공유용)
         if(window._fsImports && window._fbDb) {
-          const { doc, setDoc } = window._fsImports;
-          const photoRef = doc(window._fbDb, 'families', window._familyCode, 'hw_photos', `${key}_${ds}`);
-          await setDoc(photoRef, { url, key, ds, updatedAt: new Date().toISOString() });
+          const { doc, setDoc, getDoc } = window._fsImports;
+          // 기존 URLs 불러와서 병합
+          const urlsRef = doc(window._fbDb, 'families', window._familyCode, 'data', 'hw_photo_urls');
+          const existing = await getDoc(urlsRef);
+          const urls = existing.exists() ? (existing.data().urls || {}) : {};
+          urls[`${key}_${ds}`] = url;
+          await setDoc(urlsRef, { urls, updatedAt: new Date().toISOString() });
+          // 로컬 캐시도 업데이트
+          if(!window._hwPhotoUrls) window._hwPhotoUrls = {};
+          window._hwPhotoUrls[`${key}_${ds}`] = url;
         }
         console.log('✅ 숙제 사진 Storage 업로드 완료');
       } catch(e) {
@@ -3170,6 +3228,15 @@ setDay(curD);
 const _localChildPhoto = localStorage.getItem('chodinglife_child_photo');
 if(_localChildPhoto) { window._childPhotoSrc = _localChildPhoto; }
 
+// 부모 앱 시작 시 스케쥴 자동 저장 (3초 후 Firebase 준비되면)
+setTimeout(() => {
+  const role = localStorage.getItem('chodinglife_role');
+  if (role === 'parent' && window._fbUser && window._familyCode) {
+    syncScheduleToFirestore();
+    console.log('✅ 앱 시작 시 스케쥴 자동 저장');
+  }
+}, 3000);
+
 // ── 역할 선택 ──
 function applyRole(role) {
   if (role === 'child') {
@@ -3278,10 +3345,22 @@ if (!savedRole) {
         if (typeof loadHwFromFirestore === 'function') {
           loadHwFromFirestore(linked);
         }
+        if (typeof loadHwPhotoUrls === 'function') {
+          loadHwPhotoUrls(linked);
+        }
       }, 2000);
     }
   } else {
     goMain();
+    // 부모도 앱 시작 시 숙제 실시간 감지 (아이가 완료 체크하면 바로 반영)
+    setTimeout(() => {
+      const familyCode = localStorage.getItem('chodinglife_familycode');
+      if (familyCode && typeof watchHwFromFirestore === 'function') {
+        watchHwFromFirestore(familyCode);
+        loadChildProfilePhoto();
+        if (typeof loadHwPhotoUrls === 'function') loadHwPhotoUrls(familyCode);
+      }
+    }, 3000);
   }
 }
 </script>
