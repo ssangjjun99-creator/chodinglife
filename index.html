@@ -2806,6 +2806,8 @@ function parentApproveHw(key, ds){
   const logKey = key + '_' + ds;
   hwLog[logKey] = {name: info.n||key, emoji: info.e||'📚', ds, dayLabel: DN_KR2[dayIdx2]||'', ts: Date.now()};
   localStorage.setItem('chodinglife_hw_log', JSON.stringify(hwLog));
+  // hwLog도 Firestore에 저장
+  syncHwLogToFirestore();
   saveHw();
   updPtsHwList();
   toast('✅ 완료 처리! +20점 지급!');
@@ -3223,6 +3225,38 @@ function tick(){
 }
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 
+// hwLog Firestore 저장/감지
+async function syncHwLogToFirestore() {
+  try {
+    const familyCode = window._familyCode || localStorage.getItem('chodinglife_familycode') || localStorage.getItem('chodinglife_linkedcode');
+    if (!familyCode || !window._fsImports || !window._fbDb) return;
+    const { doc, setDoc } = window._fsImports;
+    const logRef = doc(window._fbDb, 'families', familyCode, 'data', 'hwlog');
+    await setDoc(logRef, { hwLog: JSON.stringify(hwLog), updatedAt: new Date().toISOString() });
+    console.log('✅ hwLog Firestore 저장 완료');
+  } catch(e) { console.log('hwLog 저장 실패:', e.message); }
+}
+
+function watchHwLogFromFirestore(familyCode) {
+  const role = localStorage.getItem('chodinglife_role');
+  if (role === 'parent') return;
+  try {
+    if (!window._fbDb || !window._fsImports) return;
+    const { doc, onSnapshot } = window._fsImports;
+    const logRef = doc(window._fbDb, 'families', familyCode, 'data', 'hwlog');
+    onSnapshot(logRef, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.hwLog) {
+        hwLog = JSON.parse(data.hwLog);
+        localStorage.setItem('chodinglife_hw_log', data.hwLog);
+        updPtsHwList();
+        console.log('🔄 hwLog 실시간 업데이트!');
+      }
+    });
+  } catch(e) { console.log('hwLog 감지 실패:', e.message); }
+}
+
 function updDB(){} // 위클리 방식으로 교체되어 stub 유지
 
 // ── 아이 프로필 사진 ──
@@ -3462,6 +3496,7 @@ if (!savedRole) {
         if (typeof loadHwFromFirestore === 'function') loadHwFromFirestore(linked);
         if (typeof loadHwPhotoUrls === 'function') loadHwPhotoUrls(linked);
         if (typeof watchScoresFromFirestore === 'function') watchScoresFromFirestore(linked);
+        if (typeof watchHwLogFromFirestore === 'function') watchHwLogFromFirestore(linked);
       };
       setTimeout(() => startChildSync(), 1500);
     }
