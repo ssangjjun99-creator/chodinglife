@@ -751,7 +751,27 @@ function goPage(pid,nid){
       drawHwParent();
     }
   }
-  if(pid==='page-points'){ updPtsArriveList(); updPtsHwList(); updPtsBonusList(); }
+  if(pid==='page-points'){
+    // Firestore에서 최신 점수 불러오기
+    const familyCode = window._familyCode || localStorage.getItem('chodinglife_familycode') || localStorage.getItem('chodinglife_linkedcode');
+    if(familyCode && window._fbDb && window._fsImports) {
+      const { doc, getDoc } = window._fsImports;
+      getDoc(doc(window._fbDb, 'families', familyCode, 'data', 'scores')).then(snap => {
+        if(snap.exists()) {
+          const data = snap.data();
+          wkS = data.weekPts || 0;
+          todayS = data.todayPts || 0;
+          totS = data.totalPts || 0;
+          updSc();
+        }
+        updPtsArriveList(); updPtsHwList(); updPtsBonusList();
+      }).catch(() => {
+        updPtsArriveList(); updPtsHwList(); updPtsBonusList();
+      });
+    } else {
+      updPtsArriveList(); updPtsHwList(); updPtsBonusList();
+    }
+  }
 }
 
 function setDay(d){curD=d;drawPie();}
