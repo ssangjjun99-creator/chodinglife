@@ -1929,27 +1929,34 @@ function watchHwFromFirestore(familyCode) {
         const remoteTime = snap.data().updatedAt || '';
         const localTime = localStorage.getItem('chodinglife_hw_updated') || '';
         if (remoteTime > localTime) {
-          // 내 데이터와 병합 (상태만 업데이트, 내 로컬 데이터 유지)
+          // 전체 덮어쓰기 (병합 대신)
           Object.keys(loaded).forEach(k => {
             if (!hwData[k]) hwData[k] = {};
             Object.keys(loaded[k]).forEach(ds => {
               if (!hwData[k][ds]) hwData[k][ds] = {};
-              // 상태/메모만 업데이트 (사진은 별도 처리)
               hwData[k][ds].status = loaded[k][ds].status;
               if (loaded[k][ds].memo) hwData[k][ds].memo = loaded[k][ds].memo;
-              if (loaded[k][ds].hasPhoto) hwData[k][ds].hasPhoto = loaded[k][ds].hasPhoto;
+              hwData[k][ds].hasPhoto = loaded[k][ds].hasPhoto || false;
             });
           });
           localStorage.setItem('chodinglife_hw_current', JSON.stringify(hwData));
           localStorage.setItem('chodinglife_hw_updated', remoteTime);
-          // UI 업데이트
+          // UI 전체 업데이트 (카운트 포함)
           const role = localStorage.getItem('chodinglife_role');
-          if (role === 'child') drawHwSubjects();
-          else { drawHwParent(); drawHwSubjects(); }
+          if (role === 'child') {
+            drawHwSubjects();
+            updHwScore();
+          } else {
+            drawHwParent();
+            drawHwSubjects();
+            updHwScore();
+          }
           console.log('🔄 숙제 실시간 업데이트!');
         }
       }
     });
+    // 사진 URL도 같이 감지
+    watchHwPhotoUrls(familyCode);
   } catch(e) {
     console.log('숙제 실시간 감지 실패:', e.message);
   }
@@ -3371,20 +3378,17 @@ if (!savedRole) {
       localStorage.setItem('chodinglife_familycode', linked);
       goMain();
       // 앱 시작 시 스케쥴 + 사진 자동 불러오기
-      setTimeout(() => {
-        if (typeof loadScheduleFromFirestore === 'function') {
-          loadScheduleFromFirestore(linked);
+      const startChildSync = (retry = 0) => {
+        if (!window._fbDb || !window._fsImports) {
+          if (retry < 10) setTimeout(() => startChildSync(retry + 1), 1000);
+          return;
         }
-        if (typeof loadChildProfilePhoto === 'function') {
-          loadChildProfilePhoto();
-        }
-        if (typeof loadHwFromFirestore === 'function') {
-          loadHwFromFirestore(linked);
-        }
-        if (typeof loadHwPhotoUrls === 'function') {
-          loadHwPhotoUrls(linked);
-        }
-      }, 2000);
+        if (typeof loadScheduleFromFirestore === 'function') loadScheduleFromFirestore(linked);
+        if (typeof loadChildProfilePhoto === 'function') loadChildProfilePhoto();
+        if (typeof loadHwFromFirestore === 'function') loadHwFromFirestore(linked);
+        if (typeof loadHwPhotoUrls === 'function') loadHwPhotoUrls(linked);
+      };
+      setTimeout(() => startChildSync(), 1500);
     }
   } else {
     goMain();
