@@ -3121,11 +3121,56 @@ function saveScores(){
   const mon = new Date(now);
   mon.setDate(now.getDate()+diff);
   const weekStr = mon.toISOString().slice(0,10);
-  localStorage.setItem('chodinglife_scores', JSON.stringify({
+  const scoreData = {
     todayPts: todayS, todayDate: todayStr,
     weekPts: wkS, weekDate: weekStr,
     totalPts: totS
-  }));
+  };
+  localStorage.setItem('chodinglife_scores', JSON.stringify(scoreData));
+  // Firestore에도 저장 (양방향 연동)
+  syncScoresToFirestore(scoreData);
+}
+
+// Firestore에 포인트 저장
+async function syncScoresToFirestore(scoreData) {
+  try {
+    const familyCode = window._familyCode || localStorage.getItem('chodinglife_familycode') || localStorage.getItem('chodinglife_linkedcode');
+    if (!familyCode || !window._fsImports || !window._fbDb) return;
+    const { doc, setDoc } = window._fsImports;
+    const scoreRef = doc(window._fbDb, 'families', familyCode, 'data', 'scores');
+    await setDoc(scoreRef, { ...scoreData, updatedAt: new Date().toISOString() });
+    console.log('✅ 포인트 Firestore 저장 완료');
+  } catch(e) {
+    console.log('포인트 Firestore 저장 실패:', e.message);
+  }
+}
+
+// Firestore 포인트 실시간 감지
+function watchScoresFromFirestore(familyCode) {
+  try {
+    if (!window._fbDb || !window._fsImports) return;
+    const { doc, onSnapshot } = window._fsImports;
+    const scoreRef = doc(window._fbDb, 'families', familyCode, 'data', 'scores');
+    onSnapshot(scoreRef, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const remoteTime = data.updatedAt || '';
+      const localTime = localStorage.getItem('chodinglife_scores_updated') || '';
+      if (remoteTime > localTime) {
+        // 원격 포인트로 업데이트
+        wkS = data.weekPts || 0;
+        todayS = data.todayPts || 0;
+        totS = data.totalPts || 0;
+        localStorage.setItem('chodinglife_scores_updated', remoteTime);
+        localStorage.setItem('chodinglife_scores', JSON.stringify(data));
+        updSc();
+        updPtsHwList();
+        console.log('🔄 포인트 실시간 업데이트!');
+      }
+    });
+  } catch(e) {
+    console.log('포인트 실시간 감지 실패:', e.message);
+  }
 }
 
 function updSc(){
@@ -3387,6 +3432,7 @@ if (!savedRole) {
         if (typeof loadChildProfilePhoto === 'function') loadChildProfilePhoto();
         if (typeof loadHwFromFirestore === 'function') loadHwFromFirestore(linked);
         if (typeof loadHwPhotoUrls === 'function') loadHwPhotoUrls(linked);
+        if (typeof watchScoresFromFirestore === 'function') watchScoresFromFirestore(linked);
       };
       setTimeout(() => startChildSync(), 1500);
     }
@@ -3399,6 +3445,7 @@ if (!savedRole) {
         watchHwFromFirestore(familyCode);
         loadChildProfilePhoto();
         if (typeof loadHwPhotoUrls === 'function') loadHwPhotoUrls(familyCode);
+        if (typeof watchScoresFromFirestore === 'function') watchScoresFromFirestore(familyCode);
       }
     }, 3000);
   }
@@ -3508,6 +3555,9 @@ if (!savedRole) {
           }
           if (typeof loadHwPhotoUrls === 'function') {
             loadHwPhotoUrls(code);
+          }
+          if (typeof watchScoresFromFirestore === 'function') {
+            watchScoresFromFirestore(code);
           }
           // 앱 시작 시 스케쥴 자동 저장
           syncScheduleToFirestore();
