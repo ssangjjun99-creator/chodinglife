@@ -1137,8 +1137,10 @@ function drawH(){
   ctx.restore();
   _drawStar(ctx, cx+Math.cos(hA)*(handEnd+5), cy+Math.sin(hA)*(handEnd+5), 6, 'rgba(20,20,20,0.9)');
 
-  // 중앙점 (맨 마지막)
-  ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2); ctx.fillStyle='rgba(180,30,120,0.85)'; ctx.fill();
+  // 중앙점 제거 (사진 있을 때 안 보이게)
+  if(!window._childPhotoSrc) {
+    ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2); ctx.fillStyle='rgba(180,30,120,0.85)'; ctx.fill();
+  }
 }
 
 function setNow(m,nx,e){document.getElementById('nMain').textContent=m;document.getElementById('nNext').textContent=nx;document.getElementById('nEmoji').textContent=e;}
@@ -1856,6 +1858,66 @@ function saveHw(){
     });
   });
   localStorage.setItem('chodinglife_hw_current', JSON.stringify(noPhoto));
+  // Firestore에도 저장 (부모만)
+  syncHwToFirestore(noPhoto);
+}
+
+// Firestore에 숙제 저장 (부모만)
+async function syncHwToFirestore(hwObj) {
+  try {
+    const role = localStorage.getItem('chodinglife_role');
+    if (role !== 'parent') return;
+    if (!window._fbUser || !window._familyCode || !window._fsImports || !window._fbDb) return;
+    const { doc, setDoc } = window._fsImports;
+    const hwRef = doc(window._fbDb, 'families', window._familyCode, 'data', 'homework');
+    await setDoc(hwRef, {
+      hwData: JSON.stringify(hwObj),
+      updatedAt: new Date().toISOString()
+    });
+    console.log('✅ 숙제 Firestore 저장 완료');
+  } catch(e) {
+    console.log('숙제 Firestore 저장 실패:', e.message);
+  }
+}
+
+// Firestore에서 숙제 불러오기 (아이)
+async function loadHwFromFirestore(familyCode) {
+  try {
+    if (!window._fbDb || !window._fsImports) return;
+    const { doc, getDoc } = window._fsImports;
+    const hwRef = doc(window._fbDb, 'families', familyCode, 'data', 'homework');
+    const snap = await getDoc(hwRef);
+    if (snap.exists() && snap.data().hwData) {
+      const loaded = JSON.parse(snap.data().hwData);
+      Object.assign(hwData, loaded);
+      localStorage.setItem('chodinglife_hw_current', snap.data().hwData);
+      drawHwSubjects();
+      console.log('✅ 숙제 Firestore 불러오기 완료');
+    }
+    // 실시간 감지
+    watchHwFromFirestore(familyCode);
+  } catch(e) {
+    console.log('숙제 불러오기 실패:', e.message);
+  }
+}
+
+// 숙제 실시간 감지
+function watchHwFromFirestore(familyCode) {
+  try {
+    if (!window._fbDb || !window._fsImports) return;
+    const { doc, onSnapshot } = window._fsImports;
+    const hwRef = doc(window._fbDb, 'families', familyCode, 'data', 'homework');
+    onSnapshot(hwRef, (snap) => {
+      if (snap.exists() && snap.data().hwData) {
+        const loaded = JSON.parse(snap.data().hwData);
+        Object.assign(hwData, loaded);
+        localStorage.setItem('chodinglife_hw_current', snap.data().hwData);
+        console.log('🔄 숙제 실시간 업데이트!');
+      }
+    });
+  } catch(e) {
+    console.log('숙제 실시간 감지 실패:', e.message);
+  }
 }
 
 function saveHwPhotos(){
@@ -3088,12 +3150,18 @@ function confirmChildCode() {
   if (code.length !== 6) { toast('6자리 코드를 입력해주세요!'); return; }
   localStorage.setItem('chodinglife_role', 'child');
   localStorage.setItem('chodinglife_linkedcode', code);
+  localStorage.setItem('chodinglife_familycode', code); // 아이도 가족코드 저장
+  window._familyCode = code;
   document.getElementById('childSetup').style.display = 'none';
   applyRole('child');
   goMain();
-  toast('🎉 연동 완료! 스케쥴 불러오는 중...');
-  // Firestore에서 스케쥴 불러오기
-  setTimeout(() => loadScheduleFromFirestore(code), 1000);
+  toast('🎉 연동 완료! 데이터 불러오는 중...');
+  // Firestore에서 스케쥴 + 사진 + 숙제 불러오기
+  setTimeout(() => {
+    loadScheduleFromFirestore(code);
+    loadChildProfilePhoto();
+    loadHwFromFirestore(code);
+  }, 1000);
 }
 
 // 로그아웃 시 역할 초기화 함수
@@ -3142,11 +3210,20 @@ if (!savedRole) {
       document.getElementById('childSetup').style.display = 'flex';
       document.getElementById('page-main').classList.add('hidden');
     } else {
+      // 아이 가족코드 전역 등록
+      window._familyCode = linked;
+      localStorage.setItem('chodinglife_familycode', linked);
       goMain();
-      // 앱 시작 시 스케쥴 자동 불러오기
+      // 앱 시작 시 스케쥴 + 사진 자동 불러오기
       setTimeout(() => {
         if (typeof loadScheduleFromFirestore === 'function') {
           loadScheduleFromFirestore(linked);
+        }
+        if (typeof loadChildProfilePhoto === 'function') {
+          loadChildProfilePhoto();
+        }
+        if (typeof loadHwFromFirestore === 'function') {
+          loadHwFromFirestore(linked);
         }
       }, 2000);
     }
