@@ -2537,10 +2537,15 @@ function saveHwMemo(key, ds, val){
 }
 
 function updHwScore(){
-  hwLog = JSON.parse(localStorage.getItem('chodinglife_hw_log')||'{}');
-  const hwDone = Object.values(hwLog).length;
+  // hwLog 대신 hwData에서 직접 완료 개수 계산 (연동 시 정확함)
+  let hwDone = 0;
+  Object.keys(hwData).forEach(k => {
+    Object.keys(hwData[k]).forEach(ds => {
+      if ((hwData[k][ds]||{}).status === 'done') hwDone++;
+    });
+  });
   const sc = hwDone * 20;
-  // 전체 숙제 개수 = 각 과목의 이번주 수업 있는 요일 수 합산
+  // 전체 숙제 개수
   let total = 0;
   const HW_NAMES = {sch:'sch', eng:'eng', math:'math'};
   Object.values(HW_NAMES).forEach(catId => {
