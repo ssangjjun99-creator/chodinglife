@@ -2372,6 +2372,11 @@ function compressAndSavePhoto(key, ds, file, onDone){
           // 로컬 캐시도 업데이트
           if(!window._hwPhotoUrls) window._hwPhotoUrls = {};
           window._hwPhotoUrls[`${key}_${ds}`] = url;
+          // hwData도 Firestore에 저장 (hasPhoto 플래그 포함)
+          if(!hwData[key]) hwData[key] = {};
+          if(!hwData[key][ds]) hwData[key][ds] = {status:'none', memo:''};
+          hwData[key][ds].hasPhoto = true;
+          saveHw();
         }
         console.log('✅ 숙제 사진 Storage 업로드 완료');
       } catch(e) {
@@ -2725,8 +2730,9 @@ function drawHwParent(){
                     <span style="font-size:10px;color:#8aaac8;font-weight:700">사진 첨부</span>
                     <input type="file" accept="image/*" onchange="attachPhotoParent('${info.id}','${ds}',this)" style="display:none">
                   </label>`; })()}
-              ${hw.status==='none'||!hw.status
-                ?`<button onclick="parentApproveHw('${info.id}','${ds}')" style="padding:6px 12px;border-radius:9px;border:none;background:linear-gradient(135deg,#2bc87a,#1aaa60);color:white;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;margin-left:auto">✅ 완료 처리</button>`:''}
+              ${hw.status==='done'
+                ?`<button onclick="parentApproveHw('${info.id}','${ds}')" style="padding:6px 12px;border-radius:9px;border:none;background:#f0f0f0;color:#888;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;margin-left:auto">↩️ 완료취소</button>`
+                :`<button onclick="parentApproveHw('${info.id}','${ds}')" style="padding:6px 12px;border-radius:9px;border:none;background:linear-gradient(135deg,#2bc87a,#1aaa60);color:white;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;margin-left:auto">✅ 완료 처리</button>`}
             </div>
           </div>`;
         }).join('')}`;
@@ -2833,7 +2839,11 @@ function goToHwDay(key, name, emoji, color, ds){
       <button onclick="parentApproveHw('${key}','${ds}');this.closest('[style*=fixed]').remove();drawHwParent();"
         style="width:100%;padding:12px;border-radius:14px;border:none;background:linear-gradient(135deg,#2bc87a,#1aaa60);color:white;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
         ✅ 완료 처리 +20점
-      </button>`:`<div style="text-align:center;padding:10px;color:#2bc87a;font-weight:800;font-size:13px">✅ 이미 완료된 숙제예요!</div>`}
+      </button>`:`
+      <button onclick="parentApproveHw('${key}','${ds}');this.closest('[style*=fixed]').remove();drawHwParent();"
+        style="width:100%;padding:12px;border-radius:14px;border:none;background:#f0f0f0;color:#888;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+        ↩️ 완료 취소 (-20점)
+      </button>`}
     </div>`;
 
   document.body.appendChild(overlay);
