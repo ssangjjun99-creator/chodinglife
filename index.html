@@ -3156,8 +3156,9 @@ function saveScores(){
     totalPts: totS
   };
   localStorage.setItem('chodinglife_scores', JSON.stringify(scoreData));
-  // Firestore에도 저장 (양방향 연동)
-  syncScoresToFirestore(scoreData);
+  // 부모만 Firestore에 저장 (아이는 받기만 함 → 충돌 방지)
+  const role = localStorage.getItem('chodinglife_role');
+  if (role === 'parent') syncScoresToFirestore(scoreData);
 }
 
 // Firestore에 포인트 저장
@@ -3183,19 +3184,14 @@ function watchScoresFromFirestore(familyCode) {
     onSnapshot(scoreRef, (snap) => {
       if (!snap.exists()) return;
       const data = snap.data();
-      const remoteTime = data.updatedAt || '';
-      const localTime = localStorage.getItem('chodinglife_scores_updated') || '';
-      if (remoteTime > localTime) {
-        // 원격 포인트로 업데이트
-        wkS = data.weekPts || 0;
-        todayS = data.todayPts || 0;
-        totS = data.totalPts || 0;
-        localStorage.setItem('chodinglife_scores_updated', remoteTime);
-        localStorage.setItem('chodinglife_scores', JSON.stringify(data));
-        updSc();
-        updPtsHwList();
-        console.log('🔄 포인트 실시간 업데이트!');
-      }
+      // 부모가 저장한 포인트를 항상 신뢰 (타임스탬프 비교 제거)
+      wkS = data.weekPts || 0;
+      todayS = data.todayPts || 0;
+      totS = data.totalPts || 0;
+      localStorage.setItem('chodinglife_scores', JSON.stringify(data));
+      updSc();
+      updPtsHwList();
+      console.log('🔄 포인트 실시간 업데이트:', wkS);
     });
   } catch(e) {
     console.log('포인트 실시간 감지 실패:', e.message);
