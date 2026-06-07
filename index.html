@@ -1756,7 +1756,7 @@ function arriveNow(idx){
   const key = curD + '_' + idx + '_' + arriveItems[idx].name;
   arriveData[todayKey][key] = true;
   saveArrive();
-  wkS += 10; totS += 10; todayS += 10; updSc();
+  wkS += 10; totS += 10; todayS += 10; updSc(); saveScores();
   toast('📍 ' + arriveItems[idx].name + ' 도착! +10점 🎉');
   drawChk();
   updPtsArriveList();
@@ -1796,8 +1796,7 @@ function stopG(){}
 function updPtsHwList(){
   const el = document.getElementById('ptsHwList');
   if(!el) return;
-  hwLog = JSON.parse(localStorage.getItem('chodinglife_hw_log')||'{}');
-  const logs = Object.values(hwLog);
+  const logs = Object.values(hwLog || {});
   if(!logs.length){
     el.innerHTML = '<div style="text-align:center;padding:12px;color:#8aaac8;font-size:12px">완료된 숙제가 없어요</div>';
     return;
@@ -2788,7 +2787,7 @@ function parentApproveHw(key, ds){
   if((hwData[key][ds]||{}).status === 'done'){
     if(!confirm('✅ 완료를 취소할까요?\n포인트 20점이 차감돼요.')) return;
     hwData[key][ds] = {...(hwData[key][ds]||{}), status:'none'};
-    wkS=Math.max(0,wkS-20); totS=Math.max(0,totS-20); todayS=Math.max(0,todayS-20); updSc();
+    wkS=Math.max(0,wkS-20); totS=Math.max(0,totS-20); todayS=Math.max(0,todayS-20); updSc(); saveScores();
     // 로그 삭제
     const logKey = key + '_' + ds;
     if(hwLog && hwLog[logKey]) { delete hwLog[logKey]; localStorage.setItem('chodinglife_hw_log', JSON.stringify(hwLog)); }
@@ -2799,7 +2798,7 @@ function parentApproveHw(key, ds){
     drawHwParent(); drawHwSubjects(); return;
   }
   hwData[key][ds] = {...(hwData[key][ds]||{}), status:'done'};
-  wkS+=20; totS+=20; todayS+=20; updSc();
+  wkS+=20; totS+=20; todayS+=20; updSc(); saveScores();
   // 숙제 완료 이력 로그 저장
   const info = HW_INFO[key] || {e:'📚', n:key};
   const DN_KR2 = ['월','화','수','목','금','토','일'];
@@ -3092,7 +3091,7 @@ function bonus(n,p){
   const bkey = 'bonus_'+Date.now();
   bonusLog[bkey]={name:n, point:p, ts:Date.now()};
   localStorage.setItem('chodinglife_bonus_log', JSON.stringify(bonusLog));
-  updSc();
+  updSc(); saveScores();
   updPtsBonusList();
   toast('🌟 '+n+' +'+p+'점! 😄');
 }
@@ -3212,7 +3211,6 @@ function updSc(){
   const pSub=document.getElementById('pSub'); if(pSub) pSub.textContent=wkS>=goal?'🎉 목표 달성! 보상 골라요!':'목표까지 '+(goal-wkS)+'점 남았어요!';
   const pG=document.getElementById('pG'); if(pG) pG.textContent=goal;
   if(wkS>=goal){document.querySelectorAll('.rwc').forEach(c=>{c.classList.remove('lk');const l=c.querySelector('.rwlk');if(l)l.style.display='none';});}
-  saveScores();
 }
 
 function tick(){
