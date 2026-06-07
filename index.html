@@ -3240,8 +3240,6 @@ async function syncHwLogToFirestore() {
 }
 
 function watchHwLogFromFirestore(familyCode) {
-  const role = localStorage.getItem('chodinglife_role');
-  if (role === 'parent') return;
   try {
     if (!window._fbDb || !window._fsImports) return;
     const { doc, onSnapshot } = window._fsImports;
@@ -3352,25 +3350,24 @@ function removeChildProfilePhoto() {
 
 // 앱 시작 시 아이 사진 불러오기
 function loadChildProfilePhoto() {
-  // localStorage 먼저
+  // localStorage 캐시로 일단 빠르게 표시
   const local = localStorage.getItem('chodinglife_child_photo');
-  if(local) {
-    window._childPhotoSrc = local;
-    updateChildPhotoPreview(local);
-    return;
-  }
-  // Firestore에서 URL 불러오기
+  if(local) { window._childPhotoSrc = local; updateChildPhotoPreview(local); }
+  // Firestore 실시간 감지 (항상 최신 사진 반영)
   if(!window._familyCode || !window._fbDb || !window._fsImports) return;
-  const { doc, getDoc } = window._fsImports;
+  const { doc, onSnapshot } = window._fsImports;
   const famRef = doc(window._fbDb, 'families', window._familyCode, 'data', 'profile');
-  getDoc(famRef).then(snap => {
+  onSnapshot(famRef, snap => {
     if(snap.exists() && snap.data().childPhotoUrl) {
       const url = snap.data().childPhotoUrl;
-      window._childPhotoSrc = url;
-      updateChildPhotoPreview(url);
-      localStorage.setItem('chodinglife_child_photo', url);
+      if(url !== localStorage.getItem('chodinglife_child_photo')) {
+        window._childPhotoSrc = url;
+        updateChildPhotoPreview(url);
+        localStorage.setItem('chodinglife_child_photo', url);
+        console.log('아이 사진 실시간 업데이트!');
+      }
     }
-  }).catch(e => console.log('프로필 불러오기 실패:', e.message));
+  }, e => console.log('프로필 감지 실패:', e.message));
 }
 loadAndResetScores();
 tick();setInterval(tick,1000);
@@ -3512,6 +3509,7 @@ if (!savedRole) {
         loadChildProfilePhoto();
         if (typeof loadHwPhotoUrls === 'function') loadHwPhotoUrls(familyCode);
         if (typeof watchScoresFromFirestore === 'function') watchScoresFromFirestore(familyCode);
+        if (typeof watchHwLogFromFirestore === 'function') watchHwLogFromFirestore(familyCode);  // 부모도 hwLog 실시간 감지
       }
     }, 3000);
   }
