@@ -2792,6 +2792,8 @@ function parentApproveHw(key, ds){
     // 로그 삭제
     const logKey = key + '_' + ds;
     if(hwLog && hwLog[logKey]) { delete hwLog[logKey]; localStorage.setItem('chodinglife_hw_log', JSON.stringify(hwLog)); }
+    syncHwLogToFirestore();   // 취소 시 hwLog Firestore 반영
+    syncScoresToFirestore();  // 취소 시 포인트 Firestore 반영
     saveHw(); updPtsHwList();
     toast('↩️ 완료 취소됐어요. -20점');
     drawHwParent(); drawHwSubjects(); return;
