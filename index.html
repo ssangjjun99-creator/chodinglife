@@ -3177,9 +3177,6 @@ async function syncScoresToFirestore(scoreData) {
 
 // Firestore 포인트 실시간 감지
 function watchScoresFromFirestore(familyCode) {
-  // 아이만 포인트 실시간 감지 (부모는 중복 방지)
-  const role = localStorage.getItem('chodinglife_role');
-  if (role === 'parent') return;
   try {
     if (!window._fbDb || !window._fsImports) return;
     const { doc, onSnapshot } = window._fsImports;
