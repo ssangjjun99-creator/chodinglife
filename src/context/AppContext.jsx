@@ -39,9 +39,18 @@ export function AppProvider({ children }) {
   });
 
   // ── 포인트
-  const [wkS, setWkS] = useState(0);
-  const [todayS, setTodayS] = useState(0);
-  const [totS, setTotS] = useState(0);
+  const [wkS, setWkS] = useState(() => {
+    const s = JSON.parse(localStorage.getItem('chodinglife_scores') || 'null');
+    return s ? (s.wk || 0) : 0;
+  });
+  const [todayS, setTodayS] = useState(() => {
+    const s = JSON.parse(localStorage.getItem('chodinglife_scores') || 'null');
+    return s ? (s.today || 0) : 0;
+  });
+  const [totS, setTotS] = useState(() => {
+    const s = JSON.parse(localStorage.getItem('chodinglife_scores') || 'null');
+    return s ? (s.tot || 0) : 0;
+  });
   const [goal, setGoal] = useState(() => parseInt(localStorage.getItem('chodinglife_goal')||'100'));
 
   // ── 숙제
@@ -189,16 +198,18 @@ export function AppProvider({ children }) {
       if(snap.exists()) setHwPhotoUrls(snap.data().urls || {});
     }));
 
-    // 포인트 감지 (아이는 읽기만)
+    // 포인트 감지
     const scoresRef = doc(db, 'families', familyCode, 'data', 'scores');
     unsubs.push(onSnapshot(scoresRef, (snap) => {
       if(snap.exists()) {
         const data = snap.data();
-        if(role !== 'parent') {
-          setWkS(data.weekPts || 0);
-          setTodayS(data.todayPts || 0);
-          setTotS(data.totalPts || 0);
-        }
+        const wk = data.weekPts || 0;
+        const today = data.todayPts || 0;
+        const tot = data.totalPts || 0;
+        setWkS(wk);
+        setTodayS(today);
+        setTotS(tot);
+        localStorage.setItem('chodinglife_scores', JSON.stringify({ wk, today, tot }));
       }
     }));
 
