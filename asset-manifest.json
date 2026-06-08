@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/chodinglife/static/css/main.4901b0e6.css",
+    "main.js": "/chodinglife/static/js/main.9b1cb476.js",
+    "index.html": "/chodinglife/index.html",
+    "main.4901b0e6.css.map": "/chodinglife/static/css/main.4901b0e6.css.map",
+    "main.9b1cb476.js.map": "/chodinglife/static/js/main.9b1cb476.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.4901b0e6.css",
+    "static/js/main.9b1cb476.js"
+  ]
+}
