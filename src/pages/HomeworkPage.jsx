@@ -83,7 +83,7 @@ export default function HomeworkPage() {
                       if(isToday&&!isDone) border=info.c;
                       return (
                         <div key={dayIdx} onClick={()=>setDayPopup({key,name:nm,emoji:info.e,color:info.c,ds})}
-                          style={{minWidth:48,padding:'6px 8px',borderRadius:10,background:bg,border:`2px solid ${border}`,cursor:'pointer',textAlign:'center',position:'relative',overflow:'hidden',borderLeft:isDone?`4px solid #2bc87a`:undefined}}>
+                          style={{minWidth:48,padding:'6px 8px',borderRadius:10,background:bg,border:`2px solid ${border}`,cursor:'pointer',textAlign:'center',position:'relative',overflow:'hidden'}}>
                           {isDone&&<div style={{position:'absolute',top:3,left:3,fontSize:9,lineHeight:1}}>✅</div>}
                           <div style={{fontSize:9,fontWeight:700,color:'#5a8aa8'}}>{DN_KR[dayIdx]}</div>
                           <div style={{fontSize:10,color:'#888',marginTop:1}}>{formatDateLabel(dayIdx).split(' ')[0]}</div>
@@ -138,7 +138,7 @@ export default function HomeworkPage() {
                       const icon = photo?'📷':isPending?'⏳':isDone?'':'○';
                       return (
                         <div key={dayIdx} onClick={()=>setDayPopup({key,name:nm,emoji:info.e,color:info.c,ds})}
-                          style={{minWidth:48,padding:'6px 8px',borderRadius:10,background:bg,border:`2px solid ${border}`,cursor:'pointer',textAlign:'center',position:'relative',overflow:'hidden',borderLeft:isDone?'4px solid #2bc87a':undefined}}>
+                          style={{minWidth:48,padding:'6px 8px',borderRadius:10,background:bg,border:`2px solid ${border}`,cursor:'pointer',textAlign:'center',position:'relative',overflow:'hidden'}}>
                           {isDone&&<div style={{position:'absolute',top:3,left:3,fontSize:9}}>✅</div>}
                           <div style={{fontSize:9,fontWeight:700,color:'#5a8aa8'}}>{DN_KR[dayIdx]}</div>
                           <div style={{fontSize:10,color:'#888',marginTop:1}}>{formatDateLabel(dayIdx).split(' ')[0]}</div>

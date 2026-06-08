@@ -132,6 +132,25 @@ export function AppProvider({ children }) {
           }
           localStorage.setItem('chodinglife_familycode', code);
           setFamilyCode(code);
+          // 로컬 점수 → Firebase 동기화 (기존에 로그인 없이 쌓은 점수 복구)
+          const currentRole = localStorage.getItem('chodinglife_role');
+          if(currentRole === 'parent') {
+            try {
+              const scoresRef = doc(db, 'families', code, 'data', 'scores');
+              const scoresSnap = await getDoc(scoresRef);
+              if(!scoresSnap.exists() || (scoresSnap.data().totalPts || 0) === 0) {
+                const localScores = JSON.parse(localStorage.getItem('chodinglife_scores') || 'null');
+                if(localScores && (localScores.wk > 0 || localScores.tot > 0)) {
+                  await setDoc(scoresRef, {
+                    weekPts: localScores.wk || 0,
+                    todayPts: localScores.today || 0,
+                    totalPts: localScores.tot || 0,
+                    updatedAt: new Date().toISOString()
+                  });
+                }
+              }
+            } catch(e) { console.log('점수 동기화 실패:', e.message); }
+          }
         } catch(e) {
           let code = localStorage.getItem('chodinglife_familycode');
           if(!code) {
