@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/chodinglife/static/css/main.74d196bb.css",
-    "main.js": "/chodinglife/static/js/main.5755b33a.js",
+    "main.js": "/chodinglife/static/js/main.9e5edf3a.js",
     "index.html": "/chodinglife/index.html",
     "main.74d196bb.css.map": "/chodinglife/static/css/main.74d196bb.css.map",
-    "main.5755b33a.js.map": "/chodinglife/static/js/main.5755b33a.js.map"
+    "main.9e5edf3a.js.map": "/chodinglife/static/js/main.9e5edf3a.js.map"
   },
   "entrypoints": [
     "static/css/main.74d196bb.css",
-    "static/js/main.5755b33a.js"
+    "static/js/main.9e5edf3a.js"
   ]
 }
