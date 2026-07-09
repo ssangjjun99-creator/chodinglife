@@ -28,7 +28,7 @@ dogImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(dogSVG_);
 
 function _drawStar(ctx, x, y, r, color) {
   ctx.save(); ctx.translate(x,y);
-  ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 8;
+  ctx.fillStyle = color; ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
   ctx.beginPath();
   for(let i = 0; i < 5; i++){
     const a = (i*4*Math.PI/5)-Math.PI/2, ai = (i*4*Math.PI/5+2*Math.PI/5)-Math.PI/2;
@@ -48,6 +48,13 @@ export function drawPie(canvas, SCH, curD, curAP, childPhotoUrl, setNow) {
   const ALL = SCH[curD] || [];
   const isFree = false; // FREE 지원 필요 시 파라미터 추가
   const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 2;
+  canvas.width = 300 * dpr;
+  canvas.height = 300 * dpr;
+  canvas.style.width = '300px';
+  canvas.style.height = '300px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false;
   const W=300, cx=150, cy=150;
   const R=105, outerR=134, numR=120, innerR=46;
   ctx.clearRect(0,0,W,W);
@@ -106,10 +113,18 @@ export function drawPie(canvas, SCH, curD, curAP, childPhotoUrl, setNow) {
       ctx.font=`${sz}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(seg.emoji,ex,ey);
       if(durH>=1.2){
-        const ny2=ey+bgR+8;
-        ctx.font='bold 8.5px Nunito,-apple-system,Malgun Gothic,sans-serif';
-        ctx.strokeStyle='rgba(255,255,255,0.9)'; ctx.lineWidth=3.5; ctx.strokeText(seg.name,ex,ny2);
-        ctx.fillStyle='rgba(30,45,100,0.85)'; ctx.fillText(seg.name,ex,ny2);
+        const midR = (innerR + R) / 2;
+        const textR = Math.min(R - 5, er + bgR + 4);
+        const tx = cx + Math.cos(midA) * textR;
+        const ty = cy + Math.sin(midA) * textR;
+        const label = seg.name.length > 4 ? seg.name.slice(0, 4) + '…' : seg.name;
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+        ctx.font='bold 12px Malgun Gothic,sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillStyle='#1a1a3c'; ctx.fillText(label,tx,ty);
+        ctx.restore();
       }
       ci++;
     });
@@ -141,8 +156,7 @@ export function drawPie(canvas, SCH, curD, curAP, childPhotoUrl, setNow) {
     const nx=cx+Math.cos(a)*numR, ny=cy+Math.sin(a)*numR;
     ctx.font='bold 11px Nunito,-apple-system,Malgun Gothic,sans-serif';
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.strokeStyle='rgba(255,255,255,0.92)'; ctx.lineWidth=3.5; ctx.strokeText(labels[i],nx,ny);
-    ctx.fillStyle='rgba(130,50,110,0.9)'; ctx.fillText(labels[i],nx,ny);
+    ctx.fillStyle='#3a3a5c'; ctx.fillText(labels[i],nx,ny);
   }
 
   drawH(canvas, curAP, childPhotoUrl);
@@ -160,7 +174,7 @@ export function drawH(canvas, curAP, childPhotoUrl) {
   const nowH = now.getHours()+now.getMinutes()/60+now.getSeconds()/3600;
   const from = curAP==='am'?0:12, to = curAP==='am'?12:24;
 
-  ctx.save(); ctx.shadowColor='rgba(200,100,200,0.25)'; ctx.shadowBlur=12;
+  ctx.save(); ctx.shadowColor='transparent'; ctx.shadowBlur=0;
   ctx.beginPath(); ctx.arc(cx,cy,innerR,0,Math.PI*2); ctx.fillStyle='white'; ctx.fill();
   ctx.restore();
   const pg=ctx.createRadialGradient(cx-3,cy-4,0,cx,cy,innerR);
@@ -169,6 +183,7 @@ export function drawH(canvas, curAP, childPhotoUrl) {
 
   ctx.save();
   ctx.beginPath(); ctx.arc(cx,cy,innerR-2,0,Math.PI*2); ctx.clip();
+  ctx.imageSmoothingEnabled = false;
   if(childPhotoUrl) {
     if(!_childPhotoImg || _childPhotoSrc !== childPhotoUrl) {
       _childPhotoImg = new Image();
@@ -176,10 +191,12 @@ export function drawH(canvas, curAP, childPhotoUrl) {
       _childPhotoImg.src = childPhotoUrl;
     }
     if(_childPhotoImg.complete && _childPhotoImg.naturalWidth > 0) {
-      ctx.drawImage(_childPhotoImg, cx-innerR+2, cy-innerR+2, (innerR-2)*2, (innerR-2)*2);
+      const d=Math.round((innerR-2)*3), p=Math.round(cx-d/2);
+      ctx.drawImage(_childPhotoImg, p, p, d, d);
     }
   } else if(dogImg.complete && dogImg.naturalWidth > 0){
-    ctx.drawImage(dogImg, cx-innerR+2, cy-innerR+2, (innerR-2)*2, (innerR-2)*2);
+    const d=Math.round((innerR-2)*3), p=Math.round(cx-d/2);
+    ctx.drawImage(dogImg, p, p, d, d);
   } else {
     ctx.font=`${innerR*1.1}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillText('🐶',cx,cy+3);
@@ -193,7 +210,7 @@ export function drawH(canvas, curAP, childPhotoUrl) {
   const handStart = innerR + 4;
   const handEnd = 72;
   ctx.save();
-  ctx.shadowColor='rgba(0,0,0,0.15)'; ctx.shadowBlur=3;
+  ctx.shadowColor='transparent'; ctx.shadowBlur=0;
   ctx.beginPath();
   ctx.moveTo(cx+Math.cos(hA)*handStart, cy+Math.sin(hA)*handStart);
   ctx.lineTo(cx+Math.cos(hA)*handEnd,   cy+Math.sin(hA)*handEnd);

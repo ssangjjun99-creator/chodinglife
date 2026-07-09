@@ -2,6 +2,29 @@ import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { DN, DS, WK_CATS, H, T, buildSegments, relMinToAngle } from '../utils/scheduleUtils';
 
+const _ICON_BASE = (process.env.PUBLIC_URL || '') + '/icons/';
+const _CAT_ICON_FILE = {
+  '기상':               '13_기상.png',
+  '학교':               '1_학교.png',
+  '영어학원':           '2_영어학원.png',
+  '수학학원':           '3_수학학원.png',
+  '스포츠':             '4_스포츠.png',
+  '피아노':             '5_피아노.png',
+  '수영':               '6_수영장.png',
+  '숙제':               '7_숙제.png',
+  '독서':               '8_독서.png',
+  '자유시간':           '9_자유시간.png',
+  '꿈나라':             '10_꿈나라.png',
+  '직접입력(도착알림)': '11_직접입력_도착알림.png',
+  '직접입력':           '12_직접입력.png',
+};
+
+function CatIcon({ cat, size = 24 }) {
+  const file = _CAT_ICON_FILE[cat.n];
+  if(file) return <img src={`${_ICON_BASE}${encodeURIComponent(file)}`} alt={cat.n} style={{width:size,height:size,objectFit:'contain',display:'block',margin:'0 auto',imageRendering:'auto'}} />;
+  return <span style={{fontSize:size,lineHeight:1,display:'block',textAlign:'center'}}>{cat.e}</span>;
+}
+
 const WK_END_H = 24;
 const SLOT_MIN = 10;
 const SLOT_PX = 7;
@@ -58,6 +81,7 @@ export default function WeeklyGrid() {
   const [popup, setPopup] = useState(null); // {dayIdx, startH, editIdx}
   const [selCat, setSelCat] = useState(null);
   const [longMenu, setLongMenu] = useState(null);
+  const [copySelect, setCopySelect] = useState(false);
   const longTapTimer = useRef(null);
 
   const totalPx = wkTotalPx(amView);
@@ -68,6 +92,7 @@ export default function WeeklyGrid() {
   };
 
   const openPopup = (dayIdx, startH, editIdx) => {
+    setCopySelect(false);
     const existing = editIdx >= 0 ? (SCH[dayIdx]||[])[editIdx] : null;
     setPopup({ dayIdx, startH, editIdx, existing });
     if(existing) {
@@ -76,6 +101,22 @@ export default function WeeklyGrid() {
     } else {
       setSelCat(null);
     }
+  };
+
+  const copyBlockFromPopup = (toDay) => {
+    if(!popup||popup.editIdx<0) return;
+    const ev = JSON.parse(JSON.stringify((SCH[popup.dayIdx]||[])[popup.editIdx]));
+    const items = JSON.parse(JSON.stringify(SCH[toDay]||[]));
+    const overlap = items.some(it=>ev.start<it.start+it.dur&&ev.start+ev.dur>it.start);
+    if(overlap){toast(`⚠️ ${DN[toDay]}요일에 겹치는 일정이 있어요!`);return;}
+    items.push(ev);
+    items.sort((a,b)=>a.start-b.start);
+    const newSCH = {...SCH,[toDay]:items};
+    saveSCH(newSCH, FREE);
+    setPopup(null);
+    setSelCat(null);
+    setCopySelect(false);
+    toast(`${DN[toDay]}요일 복사 완료! ✓`);
   };
 
   const confirmBlock = () => {
@@ -216,7 +257,7 @@ export default function WeeklyGrid() {
                   <div key={idx}
                     style={{position:'absolute',left:2,right:2,top,height:ht,background:ev.color,borderRadius:5,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',overflow:'hidden',boxShadow:'0 1px 3px rgba(0,0,0,0.15)',border:'1.5px solid rgba(255,255,255,0.6)',zIndex:2}}
                     onClick={e=>{e.stopPropagation();openPopup(dayIdx,ev.start,idx);}}
-                    onTouchStart={()=>{longTapTimer.current=setTimeout(()=>setLongMenu({dayIdx,idx,ev}),600);}}
+                    onTouchStart={()=>{longTapTimer.current=setTimeout(()=>setLongMenu({dayIdx,idx,ev}),500);}}
                     onTouchEnd={()=>clearTimeout(longTapTimer.current)}
                     onTouchMove={()=>clearTimeout(longTapTimer.current)}
                   >
@@ -267,8 +308,8 @@ export default function WeeklyGrid() {
 
       {/* 블럭 추가/편집 팝업 */}
       {popup && (
-        <div className="popup-overlay" onClick={e=>{if(e.target===e.currentTarget){setPopup(null);setSelCat(null);}}}>
-          <div style={{background:'white',borderRadius:'22px 22px 0 0',padding:20,width:'100%',maxWidth:420,maxHeight:'80vh',overflowY:'auto'}}>
+        <div className="popup-overlay" onClick={e=>{if(e.target===e.currentTarget){setPopup(null);setSelCat(null);setCopySelect(false);}}}>
+          <div style={{background:'white',borderRadius:'22px 22px 0 0',padding:20,width:'100%',maxWidth:420,maxHeight:'calc(100vh - 80px)',overflowY:'auto',marginBottom:80}}>
             <div style={{fontSize:14,fontWeight:800,color:'#0d5a7a',marginBottom:12}}>
               {popup.existing?'✏️ 일정 수정':'➕ 일정 추가'} · {DN[popup.dayIdx]}
             </div>
@@ -292,8 +333,8 @@ export default function WeeklyGrid() {
               {WK_CATS.map(cat=>(
                 <button key={cat.id} onClick={()=>setSelCat(cat)}
                   style={{padding:'8px 4px',borderRadius:10,border:`2px solid ${selCat?.id===cat.id?cat.c:'#e8f0f8'}`,background:selCat?.id===cat.id?cat.c+'22':'white',cursor:'pointer',fontFamily:'inherit',transition:'all 0.15s'}}>
-                  <div style={{fontSize:18}}>{cat.e}</div>
-                  <div style={{fontSize:9,fontWeight:700,color:'#1a4a6a',marginTop:2}}>{cat.n}</div>
+                  <CatIcon cat={cat} size={48} />
+                  <div style={{fontSize:9,fontWeight:700,color:'#1a4a6a',marginTop:3}}>{cat.n}</div>
                 </button>
               ))}
             </div>
@@ -307,8 +348,20 @@ export default function WeeklyGrid() {
             )}
             <div style={{display:'flex',gap:8}}>
               {popup.existing&&<button onClick={deleteBlock} style={{flex:1,padding:12,borderRadius:13,background:'#fff0f0',color:'#e05555',fontSize:13,fontWeight:700,border:'none',cursor:'pointer',fontFamily:'inherit'}}>🗑️ 삭제</button>}
+              {popup.existing&&<button onClick={()=>setCopySelect(v=>!v)} style={{flex:1,padding:12,borderRadius:13,background:copySelect?'#e0f0ff':'#f0f8ff',color:'#3a9bd5',fontSize:13,fontWeight:700,border:'1.5px solid #d4eaf5',cursor:'pointer',fontFamily:'inherit'}}>📋 복사</button>}
               <button onClick={confirmBlock} style={{flex:2,padding:12,borderRadius:13,background:'linear-gradient(135deg,#3a9bd5,#2ec4a9)',color:'white',fontSize:13,fontWeight:700,border:'none',cursor:'pointer',fontFamily:'inherit'}}>✓ 확인</button>
             </div>
+            {copySelect && popup.existing && (
+              <div style={{marginTop:10,padding:'10px 12px',borderRadius:12,background:'#f4f9ff',border:'1.5px solid #d4eaf5'}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#5a8aa8',marginBottom:8}}>어느 요일에 복사할까요?</div>
+                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                  {DS.map((d,i)=>i===popup.dayIdx?null:(
+                    <button key={d} onClick={()=>copyBlockFromPopup(i)}
+                      style={{padding:'7px 12px',borderRadius:10,border:'1.5px solid #d4eaf5',background:'white',fontSize:12,fontWeight:700,color:'#3a9bd5',cursor:'pointer',fontFamily:'inherit'}}>{d}요일</button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

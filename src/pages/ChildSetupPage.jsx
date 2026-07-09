@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 
+const ICON_BASE = (process.env.PUBLIC_URL || '') + '/icons/';
+
 export default function ChildSetupPage() {
-  const { confirmChildCode, setCurrentPage } = useApp();
+  const { confirmChildCode, setCurrentPage, resetRole } = useApp();
   const [code, setCode] = useState('');
 
   const handleConfirm = () => {
@@ -13,7 +15,7 @@ export default function ChildSetupPage() {
   return (
     <div className="page" style={{alignItems:'center',justifyContent:'center'}}>
       <div style={{textAlign:'center',padding:'30px 24px',width:'100%',maxWidth:360}}>
-        <div style={{fontSize:56,marginBottom:12}}>👧</div>
+        <img src={ICON_BASE + encodeURIComponent('19_아이.png')} alt="아이" style={{width:180,height:180,marginBottom:20,objectFit:'contain'}} />
         <div style={{fontSize:20,fontWeight:900,color:'#0d5a7a',marginBottom:6}}>가족코드 입력</div>
         <div style={{fontSize:13,color:'#5aaac8',marginBottom:32}}>부모님 폰의 가족코드를 입력해주세요!</div>
 
@@ -30,7 +32,7 @@ export default function ChildSetupPage() {
         >
           🔗 연동하기
         </button>
-        <div onClick={()=>setCurrentPage('role-select')} style={{fontSize:12,color:'#8aaac8',cursor:'pointer'}}>← 부모님이세요?</div>
+        <div onClick={resetRole} style={{fontSize:12,color:'#8aaac8',cursor:'pointer'}}>← 부모님이세요?</div>
       </div>
     </div>
   );

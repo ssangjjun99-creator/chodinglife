@@ -4,17 +4,47 @@ import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword
 } from 'firebase/auth';
 import {
-  doc, setDoc, getDoc, onSnapshot
+  doc, setDoc, getDoc, onSnapshot, deleteDoc
 } from 'firebase/firestore';
 import {
   ref, uploadBytes, getDownloadURL, deleteObject
 } from 'firebase/storage';
 import { auth, db, storage, googleProvider } from '../firebase/config';
 import {
-  makeDefaultSchedule, checkHwWeekReset, H, mondayStr, getMonday
+  makeDefaultSchedule, checkHwWeekReset, H, mondayStr, getMonday, HW_INFO
 } from '../utils/scheduleUtils';
 
 const AppContext = createContext(null);
+
+// 이미지 압축 (FileReader + Image → Canvas → JPEG 0.6, 최대 600px)
+// iOS Safari HEIC 호환: FileReader/Image 방식은 iOS가 자동 디코딩해서 Canvas에 그릴 수 있음
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('파일 읽기 실패'));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('이미지 디코딩 실패'));
+      img.onload = () => {
+        try {
+          const MAX = 600;
+          let w = img.naturalWidth, h = img.naturalHeight;
+          if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
+          else        { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob((blob) => {
+            if (!blob) { reject(new Error('압축 결과 없음')); return; }
+            resolve(blob);
+          }, 'image/jpeg', 0.6);
+        } catch(err) { reject(err); }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 export function AppProvider({ children }) {
   // ── 역할 / 인증
@@ -27,6 +57,7 @@ export function AppProvider({ children }) {
 
   // ── 화면
   const [currentPage, setCurrentPage] = useState('main');
+  const [parentTab, setParentTab] = useState('ov');
 
   // ── 스케쥴
   const [SCH, setSCH] = useState(() => {
@@ -67,13 +98,12 @@ export function AppProvider({ children }) {
   const [hwLastPhotos] = useState(() =>
     JSON.parse(localStorage.getItem('chodinglife_hw_photos_last') || '{}')
   );
-  const [hwExtra, setHwExtra] = useState(() =>
-    JSON.parse(localStorage.getItem('chodinglife_hw_extra') || '[]')
-  );
+  const [hwExtra, setHwExtra] = useState([]);
   const [hwLog, setHwLog] = useState(() =>
     JSON.parse(localStorage.getItem('chodinglife_hw_log') || '{}')
   );
   const [hwPhotoUrls, setHwPhotoUrls] = useState({});
+  const [hwPhotoUrlsLast, setHwPhotoUrlsLast] = useState({});
 
   // ── 도착
   const todayKey = new Date().toISOString().slice(0,10);
@@ -90,6 +120,9 @@ export function AppProvider({ children }) {
   const [bonusLog, setBonusLog] = useState(() =>
     JSON.parse(localStorage.getItem('chodinglife_bonus_log') || '{}')
   );
+
+  // ── 응원메시지
+  const [message, setMessage] = useState(null);
 
   // ── 토스트
   const [toastMsg, setToastMsg] = useState('');
@@ -160,7 +193,8 @@ export function AppProvider({ children }) {
           setFamilyCode(code);
         }
       } else {
-        setFamilyCode(null);
+        const localCode = localStorage.getItem('chodinglife_familycode');
+        setFamilyCode(localCode || null);
       }
     });
     return () => unsub();
@@ -170,6 +204,29 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if(!familyCode) return;
     const unsubs = [];
+
+    // 주간 리셋: Firestore hw_photo_urls 초기화 (다중 기기 가드 포함)
+    (async () => {
+      try {
+        const thisMonday = mondayStr(getMonday(new Date()));
+        const urlsRef = doc(db, 'families', familyCode, 'data', 'hw_photo_urls');
+        const snap = await getDoc(urlsRef);
+        if(snap.exists()) {
+          const data = snap.data();
+          const savedResetWeek = data.resetWeek || '';
+          if(!savedResetWeek) {
+            // 도장이 없는 경우 = 새 주가 아니라 도장 유실/최초 상태일 수 있으므로 삭제 없이 도장만 찍음
+            await setDoc(urlsRef, { resetWeek: thisMonday }, { merge: true });
+          } else if(savedResetWeek !== thisMonday) {
+            const lastRef = doc(db, 'families', familyCode, 'data', 'hw_photo_urls_last');
+            await setDoc(lastRef, { urls: data.urls || {}, savedAt: new Date().toISOString() });
+            await setDoc(urlsRef, { urls: {}, resetWeek: thisMonday, updatedAt: new Date().toISOString() });
+          }
+        }
+      } catch(e) {
+        console.warn('[hwPhotoReset] Firestore 리셋 실패:', e.message);
+      }
+    })();
 
     // 스케쥴 감지
     const schedRef = doc(db, 'families', familyCode, 'data', 'schedule');
@@ -185,7 +242,7 @@ export function AppProvider({ children }) {
           setFREE(prev => { const m = {...prev,...newFREE}; localStorage.setItem('chodinglife_free_v1',JSON.stringify(m)); return m; });
         }
       }
-    }));
+    }, (e) => { console.warn('[onSnapshot] schedule 권한 오류:', e.code); }));
 
     // 숙제 감지
     const hwRef = doc(db, 'families', familyCode, 'data', 'homework');
@@ -209,13 +266,19 @@ export function AppProvider({ children }) {
           });
         }
       }
-    }));
+    }, (e) => { console.warn('[onSnapshot] homework 권한 오류:', e.code); }));
 
     // 사진 URL 감지
     const photoRef = doc(db, 'families', familyCode, 'data', 'hw_photo_urls');
     unsubs.push(onSnapshot(photoRef, (snap) => {
       if(snap.exists()) setHwPhotoUrls(snap.data().urls || {});
-    }));
+    }, (e) => { console.warn('[onSnapshot] hw_photo_urls 권한 오류:', e.code); }));
+
+    // 지난주 사진 URL 감지
+    const photoLastRef = doc(db, 'families', familyCode, 'data', 'hw_photo_urls_last');
+    unsubs.push(onSnapshot(photoLastRef, (snap) => {
+      if(snap.exists()) setHwPhotoUrlsLast(snap.data().urls || {});
+    }, (e) => { console.warn('[onSnapshot] hw_photo_urls_last 권한 오류:', e.code); }));
 
     // 포인트 감지
     const scoresRef = doc(db, 'families', familyCode, 'data', 'scores');
@@ -230,7 +293,7 @@ export function AppProvider({ children }) {
         setTotS(tot);
         localStorage.setItem('chodinglife_scores', JSON.stringify({ wk, today, tot }));
       }
-    }));
+    }, (e) => { console.warn('[onSnapshot] scores 권한 오류:', e.code); }));
 
     // hwLog 감지
     const hwLogRef = doc(db, 'families', familyCode, 'data', 'hwlog');
@@ -240,7 +303,7 @@ export function AppProvider({ children }) {
         setHwLog(loaded);
         localStorage.setItem('chodinglife_hw_log', JSON.stringify(loaded));
       }
-    }));
+    }, (e) => { console.warn('[onSnapshot] hwlog 권한 오류:', e.code); }));
 
     // 아이 프로필 사진 감지
     const profileRef = doc(db, 'families', familyCode, 'data', 'profile');
@@ -248,7 +311,45 @@ export function AppProvider({ children }) {
       if(snap.exists() && snap.data().childPhotoUrl) {
         setChildPhotoUrl(snap.data().childPhotoUrl);
       }
+    }, (e) => { console.warn('[onSnapshot] profile 권한 오류:', e.code); }));
+
+    // 도착 기록 감지 (아이가 쓰면 부모가 실시간으로 수신)
+    const arriveSnapRef = doc(db, 'families', familyCode, 'data', 'arrive');
+    unsubs.push(onSnapshot(arriveSnapRef, (snap) => {
+      if(snap.exists() && snap.data().arriveData) {
+        const loaded = JSON.parse(snap.data().arriveData);
+        setArriveData(prev => {
+          const merged = { ...prev, ...loaded };
+          localStorage.setItem('chodinglife_arrive_v1', JSON.stringify(merged));
+          return merged;
+        });
+      }
+    }, (e) => { console.warn('[onSnapshot] arrive 권한 오류:', e.code); }));
+
+    // 보너스 로그 감지 (부모가 쓰면 아이가 실시간으로 수신)
+    const bonusLogSnapRef = doc(db, 'families', familyCode, 'data', 'bonuslog');
+    unsubs.push(onSnapshot(bonusLogSnapRef, (snap) => {
+      if(snap.exists() && snap.data().bonusLog) {
+        const loaded = JSON.parse(snap.data().bonusLog);
+        setBonusLog(loaded);
+        localStorage.setItem('chodinglife_bonus_log', JSON.stringify(loaded));
+      }
+    }, (e) => { console.warn('[onSnapshot] bonuslog 권한 오류:', e.code); }));
+
+    // 응원메시지 감지 (부모가 쓰면 아이가 실시간으로 수신)
+    const msgSnapRef = doc(db, 'families', familyCode, 'data', 'message');
+    unsubs.push(onSnapshot(msgSnapRef, (snap) => {
+      setMessage(snap.exists() ? snap.data() : null);
+    }, (e) => {
+      console.warn('[onSnapshot] message 권한 오류:', e.code);
+      setMessage(null);
     }));
+
+    // 커스텀 숙제 항목 감지 (부모가 추가하면 아이 화면에 실시간 반영)
+    const hwExtraRef = doc(db, 'families', familyCode, 'data', 'hw_extra');
+    unsubs.push(onSnapshot(hwExtraRef, (snap) => {
+      setHwExtra(snap.exists() ? (snap.data().items || []) : []);
+    }, (e) => { console.warn('[onSnapshot] hw_extra 권한 오류:', e.code); }));
 
     return () => unsubs.forEach(u => u());
   }, [familyCode, role]);
@@ -276,7 +377,7 @@ export function AppProvider({ children }) {
   const saveScores = useCallback(async (wk, today, tot) => {
     setWkS(wk); setTodayS(today); setTotS(tot);
     localStorage.setItem('chodinglife_scores', JSON.stringify({wk, today, tot}));
-    if(fbUser && familyCode && role === 'parent') {
+    if(familyCode) {
       try {
         const scoresRef = doc(db, 'families', familyCode, 'data', 'scores');
         await setDoc(scoresRef, {
@@ -322,10 +423,29 @@ export function AppProvider({ children }) {
     }
   }, [fbUser, familyCode]);
 
-  const saveArrive = useCallback((newData) => {
+  const saveArrive = useCallback(async (newData) => {
     setArriveData(newData);
     localStorage.setItem('chodinglife_arrive_v1', JSON.stringify(newData));
-  }, []);
+    if(familyCode) {
+      try {
+        const arriveRef = doc(db, 'families', familyCode, 'data', 'arrive');
+        await setDoc(arriveRef, {
+          arriveData: JSON.stringify(newData),
+          updatedAt: new Date().toISOString()
+        });
+      } catch(e) { console.log('도착 Firestore 저장 실패:', e.message); }
+    }
+  }, [familyCode]);
+
+  const saveHwExtra = useCallback(async (newExtra) => {
+    setHwExtra(newExtra);
+    if(familyCode) {
+      try {
+        const extraRef = doc(db, 'families', familyCode, 'data', 'hw_extra');
+        await setDoc(extraRef, { items: newExtra, updatedAt: new Date().toISOString() });
+      } catch(e) { console.log('hwExtra 저장 실패:', e.message); }
+    }
+  }, [familyCode]);
 
   const saveHwPhotos = useCallback((newPhotos) => {
     setHwPhotos(newPhotos);
@@ -362,19 +482,60 @@ export function AppProvider({ children }) {
     } catch(e) { console.log('사진 삭제:', e.message); }
   }, [familyCode, toast]);
 
-  // 숙제 사진 업로드 (Firebase Storage)
+  // 숙제 사진 삭제 (Firebase Storage + Firestore + 로컬 state)
+  const deleteHwPhoto = useCallback(async (key, ds) => {
+    if(!familyCode) return;
+    const photoKey = `${key}_${ds}`;
+    // 로컬 state 즉시 업데이트 (UI 즉각 반응)
+    setHwPhotoUrls(prev => { const n={...prev}; delete n[photoKey]; return n; });
+    const newPhotos = {...hwPhotos}; delete newPhotos[photoKey];
+    saveHwPhotos(newPhotos);
+    try {
+      // 1. Firebase Storage 파일 삭제 (파일 없으면 무시)
+      try {
+        const storageRef = ref(storage, `families/${familyCode}/hw_photos/${photoKey}.jpg`);
+        await deleteObject(storageRef);
+      } catch(se) {
+        if(se.code !== 'storage/object-not-found') throw se;
+      }
+      // 2. Firestore hw_photo_urls 문서에서 해당 키만 제거
+      const urlsRef = doc(db, 'families', familyCode, 'data', 'hw_photo_urls');
+      const snap = await getDoc(urlsRef);
+      if(snap.exists()) {
+        const urls = snap.data().urls || {};
+        delete urls[photoKey];
+        await setDoc(urlsRef, { urls, updatedAt: new Date().toISOString() }, { merge: true });
+      }
+      toast('사진 삭제됐어요!');
+    } catch(e) {
+      console.error('[deleteHwPhoto] 삭제 실패:', e);
+      toast('삭제에 실패했어요 😢');
+    }
+  }, [familyCode, hwPhotos, saveHwPhotos, toast]);
+
+  // 숙제 사진 업로드 (압축 → Firebase Storage)
   const uploadHwPhoto = useCallback(async (key, ds, file, onDone) => {
     if(!familyCode) { onDone && onDone(); return; }
+    // 1단계: 압축 (실패 시 fallback 없이 명확히 종료)
+    let blob;
+    try {
+      blob = await compressImage(file);
+    } catch(ce) {
+      console.error('[uploadHwPhoto] 압축 실패:', ce);
+      toast('사진 처리에 실패했어요 😢');
+      onDone && onDone();
+      return;
+    }
+    // 2단계: Storage 업로드 + Firestore 저장
     try {
       const storageRef = ref(storage, `families/${familyCode}/hw_photos/${key}_${ds}.jpg`);
-      await uploadBytes(storageRef, file);
+      await uploadBytes(storageRef, blob);
       const url = await getDownloadURL(storageRef);
-      // URL을 Firestore에 저장
       const urlsRef = doc(db, 'families', familyCode, 'data', 'hw_photo_urls');
       const snap = await getDoc(urlsRef);
       const urls = snap.exists() ? (snap.data().urls || {}) : {};
       urls[`${key}_${ds}`] = url;
-      await setDoc(urlsRef, { urls, updatedAt: new Date().toISOString() });
+      await setDoc(urlsRef, { urls, updatedAt: new Date().toISOString() }, { merge: true });
       setHwPhotoUrls(prev => ({...prev, [`${key}_${ds}`]: url}));
       toast('📷 사진 업로드 완료!');
       onDone && onDone(url);
@@ -391,8 +552,8 @@ export function AppProvider({ children }) {
   }, [hwPhotos, hwPhotoUrls]);
 
   const getHwLastPhoto = useCallback((key, ds) => {
-    return hwLastPhotos[`${key}_${ds}`] || '';
-  }, [hwLastPhotos]);
+    return hwLastPhotos[`${key}_${ds}`] || hwPhotoUrlsLast[`${key}_${ds}`] || '';
+  }, [hwLastPhotos, hwPhotoUrlsLast]);
 
   // ── Auth 함수들
   const doEmailLogin = useCallback(async (email, pw) => {
@@ -508,8 +669,38 @@ export function AppProvider({ children }) {
     const newLog = {...bonusLog, [Date.now()]: {name, pts, ts: Date.now()}};
     setBonusLog(newLog);
     localStorage.setItem('chodinglife_bonus_log', JSON.stringify(newLog));
+    if(familyCode) {
+      try {
+        const bonusRef = doc(db, 'families', familyCode, 'data', 'bonuslog');
+        setDoc(bonusRef, { bonusLog: JSON.stringify(newLog), updatedAt: new Date().toISOString() });
+      } catch(e) { console.log('보너스 Firestore 저장 실패:', e.message); }
+    }
     toast(`🌟 ${name} +${pts}점!`);
-  }, [addScore, bonusLog, toast]);
+  }, [addScore, bonusLog, familyCode, toast]);
+
+  const sendMessage = useCallback(async (text) => {
+    if(!familyCode) return;
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      const msgRef = doc(db, 'families', familyCode, 'data', 'message');
+      await setDoc(msgRef, { text, sentAt: today, sentBy: 'parent' });
+      toast('💌 응원메시지 전송됐어요!');
+    } catch(e) {
+      toast('전송 실패 😢');
+      console.error(e);
+    }
+  }, [familyCode, toast]);
+
+  const deleteMessage = useCallback(async () => {
+    if(!familyCode) return;
+    try {
+      const msgRef = doc(db, 'families', familyCode, 'data', 'message');
+      await deleteDoc(msgRef);
+    } catch(e) {
+      toast('삭제 실패 😢');
+      console.error(e);
+    }
+  }, [familyCode, toast]);
 
   // ── 숙제 완료 처리
   const parentApproveHw = useCallback((key, ds) => {
@@ -529,7 +720,7 @@ export function AppProvider({ children }) {
       addScore(20);
       const DN_KR = ['월','화','수','목','금','토','일'];
       const dayIdx = parseInt(ds.replace('day_',''));
-      const info = {n:key, e:'📚'};
+      const info = HW_INFO[key] || {n:key, e:'📚'};
       const newLog = {...hwLog, [`${key}_${ds}`]: {
         name: info.n||key, emoji: info.e, ds, dayLabel: DN_KR[dayIdx]||'', ts: Date.now()
       }};
@@ -565,20 +756,21 @@ export function AppProvider({ children }) {
   const value = {
     // 상태
     role, fbUser, authReady, familyCode, currentPage, setCurrentPage,
+    parentTab, setParentTab,
     SCH, FREE, wkS, todayS, totS, goal, setGoal,
-    hwData, hwLastData, hwPhotos, hwLastPhotos, hwExtra, setHwExtra,
+    hwData, hwLastData, hwPhotos, hwLastPhotos, hwExtra,
     hwLog, hwPhotoUrls, arriveData, todayKey,
-    childPhotoUrl, bonusLog, toastMsg, rwI, setRwI,
+    childPhotoUrl, bonusLog, message, toastMsg, rwI, setRwI,
     // 저장
-    saveSCH, saveScores, saveHwData, saveHwLog, saveArrive, saveHwPhotos,
+    saveSCH, saveScores, saveHwData, saveHwLog, saveArrive, saveHwPhotos, saveHwExtra,
     // Auth
     doEmailLogin, doEmailSignup, doGoogleLogin, doLogout,
     selectRole, resetRole, copyFamilyCode, confirmChildCode,
     // 액션
-    toast, addScore, subtractScore, bonus, parentApproveHw,
+    toast, addScore, subtractScore, bonus, sendMessage, deleteMessage, parentApproveHw,
     arriveNow, secretReset,
     // 사진
-    uploadChildPhoto, removeChildPhoto, uploadHwPhoto,
+    uploadChildPhoto, removeChildPhoto, uploadHwPhoto, deleteHwPhoto,
     getHwPhoto, getHwLastPhoto,
   };
 

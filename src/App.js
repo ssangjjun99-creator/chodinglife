@@ -9,6 +9,7 @@ import PointsPage from './pages/PointsPage';
 import CheckinPage from './pages/CheckinPage';
 import HomeworkPage from './pages/HomeworkPage';
 import ParentPage from './pages/ParentPage';
+import WordGamePage from './pages/WordGamePage';
 
 function AppInner() {
   const { role, fbUser, authReady, currentPage } = useApp();
@@ -47,7 +48,8 @@ function AppInner() {
       <div style={hide('checkin')}><CheckinPage /></div>
       <div style={hide('homework')}><HomeworkPage /></div>
       <div style={hide('parent')}><ParentPage /></div>
-      <Navbar />
+      {currentPage === 'wordgame' && <WordGamePage />}
+      {currentPage !== 'wordgame' && <Navbar />}
     </>
   );
 }

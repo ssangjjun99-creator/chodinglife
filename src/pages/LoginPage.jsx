@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 
+const ICON_BASE = (process.env.PUBLIC_URL || '') + '/icons/';
+
 export default function LoginPage() {
   const { doEmailLogin, doEmailSignup, doGoogleLogin, resetRole } = useApp();
   const [emailV, setEmailV] = useState('');
@@ -25,9 +27,9 @@ export default function LoginPage() {
       <div style={{width:'100%',maxWidth:360,padding:'0 24px'}}>
         {/* 헤더 */}
         <div style={{textAlign:'center',marginBottom:32}}>
-          <div style={{fontSize:52,marginBottom:10}}>👨‍👩‍👧</div>
+          <img src={ICON_BASE + encodeURIComponent('18_부모님.png')} alt="부모" style={{width:72,height:72,marginBottom:10,objectFit:'contain'}} />
           <div style={{fontSize:22,fontWeight:900,color:'#0d5a7a',marginBottom:4}}>부모님 로그인</div>
-          <div style={{fontSize:13,color:'#5aaac8',lineHeight:1.5}}>로그인하면 지율이 폰과<br/>실시간으로 연동돼요! 📱</div>
+          <div style={{fontSize:13,color:'#5aaac8',lineHeight:1.5}}>로그인하면 아이 폰과<br/>실시간으로 연동돼요! 📱</div>
         </div>
 
         {/* 탭 */}

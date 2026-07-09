@@ -4,6 +4,9 @@
   "private": true,
   "homepage": "https://ssangjjun99-creator.github.io/chodinglife",
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -17,6 +20,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "build:app": "cross-env PUBLIC_URL=. react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
@@ -41,6 +45,8 @@
     ]
   },
   "devDependencies": {
-    "gh-pages": "^6.3.0"
+    "cross-env": "^10.1.0",
+    "gh-pages": "^6.3.0",
+    "sharp": "^0.35.1"
   }
 }
