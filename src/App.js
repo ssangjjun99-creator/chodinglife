@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { useApp } from './context/AppContext';
 import Toast from './components/Toast';
 import Navbar from './components/Navbar';
@@ -31,6 +32,26 @@ function AppInner() {
     });
     return () => { listenerPromise.then(l => l.remove()); };
   }, [setCurrentPage]);
+
+  // 푸시알림 초기화 (네이티브 전용, 1단계: 권한 요청 + 토큰/수신 로그만)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const regListenerPromise = PushNotifications.addListener('registration', (token) => {
+      console.log('[Push] 등록 토큰:', token.value);
+    });
+    const recvListenerPromise = PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      console.log('[Push] 알림 수신:', notification);
+    });
+    PushNotifications.requestPermissions().then((res) => {
+      if (res.receive === 'granted') {
+        PushNotifications.register();
+      }
+    });
+    return () => {
+      regListenerPromise.then(l => l.remove());
+      recvListenerPromise.then(l => l.remove());
+    };
+  }, []);
 
   // Firebase 인증 초기화 대기
   if(!authReady) {

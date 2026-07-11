@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1079803403295",
+    "project_id": "chodinglife-af09a",
+    "storage_bucket": "chodinglife-af09a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1079803403295:android:1630035f2ae450e2ed492a",
+        "android_client_info": {
+          "package_name": "com.chodinglife.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1079803403295-sqvb6c3j8f8g08omiug6i8cco1bcn6d5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAq68UIpEaq1Ciqwq9uHg2At9cKz4xymrE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1079803403295-sqvb6c3j8f8g08omiug6i8cco1bcn6d5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
