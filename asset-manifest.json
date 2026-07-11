@@ -1,17 +1,17 @@
 {
   "files": {
     "main.css": "/chodinglife/static/css/main.5720c01d.css",
-    "main.js": "/chodinglife/static/js/main.d9e13312.js",
+    "main.js": "/chodinglife/static/js/main.c9565a95.js",
     "static/js/551.6bca2eb4.chunk.js": "/chodinglife/static/js/551.6bca2eb4.chunk.js",
     "static/js/8.1e3bcf9d.chunk.js": "/chodinglife/static/js/8.1e3bcf9d.chunk.js",
     "index.html": "/chodinglife/index.html",
     "main.5720c01d.css.map": "/chodinglife/static/css/main.5720c01d.css.map",
-    "main.d9e13312.js.map": "/chodinglife/static/js/main.d9e13312.js.map",
+    "main.c9565a95.js.map": "/chodinglife/static/js/main.c9565a95.js.map",
     "551.6bca2eb4.chunk.js.map": "/chodinglife/static/js/551.6bca2eb4.chunk.js.map",
     "8.1e3bcf9d.chunk.js.map": "/chodinglife/static/js/8.1e3bcf9d.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.5720c01d.css",
-    "static/js/main.d9e13312.js"
+    "static/js/main.c9565a95.js"
   ]
 }
