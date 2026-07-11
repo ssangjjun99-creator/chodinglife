@@ -1,7 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from './firebase/config';
 import { useApp } from './context/AppContext';
 import Toast from './components/Toast';
 import Navbar from './components/Navbar';
@@ -16,10 +18,30 @@ import ParentPage from './pages/ParentPage';
 import WordGamePage from './pages/WordGamePage';
 
 function AppInner() {
-  const { role, fbUser, authReady, currentPage, setCurrentPage } = useApp();
+  const { role, fbUser, authReady, familyCode, currentPage, setCurrentPage } = useApp();
 
   const currentPageRef = useRef(currentPage);
   currentPageRef.current = currentPage;
+
+  const familyCodeRef = useRef(familyCode);
+  familyCodeRef.current = familyCode;
+  const pushTokenRef = useRef(null);
+
+  // FCM 토큰을 families/{familyCode}/data/fcm_tokens에 저장 (토큰을 키로 써서 중복 자동 방지)
+  const saveFcmToken = useCallback(async (token, fc) => {
+    if (!token || !fc) return;
+    const savedRole = localStorage.getItem('chodinglife_role');
+    if (!savedRole) return;
+    try {
+      const tokenDocRef = doc(db, 'families', fc, 'data', 'fcm_tokens');
+      await setDoc(tokenDocRef, {
+        tokens: { [token]: { role: savedRole, updatedAt: new Date().toISOString() } }
+      }, { merge: true });
+      console.log('[Push] 토큰 Firestore 저장 성공');
+    } catch (e) {
+      console.log('[Push] 토큰 Firestore 저장 실패:', e.message);
+    }
+  }, []);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -38,6 +60,8 @@ function AppInner() {
     if (!Capacitor.isNativePlatform()) return;
     const regListenerPromise = PushNotifications.addListener('registration', (token) => {
       console.log('[Push] 등록 토큰:', token.value);
+      pushTokenRef.current = token.value;
+      saveFcmToken(token.value, familyCodeRef.current);
     });
     const recvListenerPromise = PushNotifications.addListener('pushNotificationReceived', (notification) => {
       console.log('[Push] 알림 수신:', notification);
@@ -51,7 +75,15 @@ function AppInner() {
       regListenerPromise.then(l => l.remove());
       recvListenerPromise.then(l => l.remove());
     };
-  }, []);
+  }, [saveFcmToken]);
+
+  // familyCode가 registration 이후에 준비되는 경우 대응: 보관해둔 토큰을 그때 저장
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    if (pushTokenRef.current) {
+      saveFcmToken(pushTokenRef.current, familyCode);
+    }
+  }, [familyCode, saveFcmToken]);
 
   // Firebase 인증 초기화 대기
   if(!authReady) {
