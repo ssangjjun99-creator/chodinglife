@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { app as firebaseApp, app } from '../firebase/config';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useApp } from '../context/AppContext';
+import { Capacitor } from '@capacitor/core';
+import { TextToSpeech } from '@capacitor-community/text-to-speech';
 
 // ==================== AUDIO ====================
 let audioCtx = null;
@@ -335,9 +337,21 @@ const GRID_TOP     = 52;
 const GRID_BLOCK_H = 52;
 const GRID_ROW_GAP = 8;
 
+let safeInsetTop = 0, safeInsetBottom = 0;
+function measureSafeAreaInsets() {
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);';
+    document.body.appendChild(probe);
+    const cs = getComputedStyle(probe);
+    safeInsetTop = parseFloat(cs.paddingTop) || 0;
+    safeInsetBottom = parseFloat(cs.paddingBottom) || 0;
+    document.body.removeChild(probe);
+}
+
 // ==================== GAME FUNCTIONS ====================
 function resizeCanvas() {
     if (!canvas) return;
+    measureSafeAreaInsets();
     const c = canvas.parentElement;
     canvas.width  = c.clientWidth;
     canvas.height = c.clientHeight;
@@ -345,7 +359,7 @@ function resizeCanvas() {
     ball.baseSpeed = Math.max(2.2, Math.min(4.0, canvas.width * 0.007));
     paddle.width   = Math.max(113, Math.min(163, canvas.width * 0.40));
     basePaddleWidth = paddle.width;
-    paddle.y = canvas.height - 68;
+    paddle.y = canvas.height - 68 - safeInsetBottom;
     if (paddle.x === 0) paddle.x = (canvas.width - paddle.width) / 2;
 }
 
@@ -394,7 +408,13 @@ function keepPaddleInBounds() {
 function getCleanEnglish(text) { return text.replace(/[^\x00-\x7F]+/g,'').trim(); }
 function speakWord(text) {
     const c = getCleanEnglish(text);
-    if (!c || !window.speechSynthesis) return;
+    if (!c) return;
+    if (Capacitor.isNativePlatform()) {
+        TextToSpeech.stop();
+        TextToSpeech.speak({ text: c, lang: 'en-US', rate: 0.85 });
+        return;
+    }
+    if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(c);
     u.lang = 'en-US'; u.rate = 0.85;
@@ -563,7 +583,7 @@ function loadWord(index) {
 
     const getSlotPos = (slot) => ({
         x: margin + (slot % 3) * (bw + margin),
-        y: GRID_TOP + Math.floor(slot / 3) * (GRID_BLOCK_H + GRID_ROW_GAP),
+        y: GRID_TOP + safeInsetTop + Math.floor(slot / 3) * (GRID_BLOCK_H + GRID_ROW_GAP),
         width: bw,
         height: GRID_BLOCK_H
     });
@@ -1230,7 +1250,8 @@ export default function WordGamePage() {
             window.removeEventListener('resize', resizeCanvas);
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
-            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            if (Capacitor.isNativePlatform()) TextToSpeech.stop();
+            else if (window.speechSynthesis) window.speechSynthesis.cancel();
             if (ro) ro.disconnect();
             clearTimeout(debounceTimerRef.current);
             window._wgSetHasSave = null;
@@ -1275,9 +1296,9 @@ export default function WordGamePage() {
 
                 {/* HUD — 항상 flex, 시작화면에 의해 가려짐 */}
                 <div id="canvas-hud"
-                     style={{display:'flex',position:'absolute',top:0,left:0,right:0,height:44,zIndex:10,
+                     style={{display:'flex',position:'absolute',top:0,left:0,right:0,height:'calc(44px + env(safe-area-inset-top))',zIndex:10,
                              background:'rgba(255,255,255,0.9)',alignItems:'center',
-                             justifyContent:'space-between',padding:'0 4px 0 0',pointerEvents:'none'}}>
+                             justifyContent:'space-between',padding:'env(safe-area-inset-top) 4px 0 0',pointerEvents:'none'}}>
                     <button onClick={() => setCurrentPage('main')}
                             style={{pointerEvents:'auto',background:'none',border:'none',cursor:'pointer',
                                     minWidth:44,minHeight:44,display:'flex',alignItems:'center',justifyContent:'center',

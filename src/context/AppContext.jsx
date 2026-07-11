@@ -228,6 +228,127 @@ export function AppProvider({ children }) {
       }
     })();
 
+    // 주간/일간 리셋: Firestore scores 초기화 (weekPts→주간, todayPts→일간, totalPts는 누적 유지). 다중 기기 가드 포함
+    (async () => {
+      try {
+        const thisMonday = mondayStr(getMonday(new Date()));
+        const todayStr = new Date().toISOString().slice(0,10);
+        const scoresRef = doc(db, 'families', familyCode, 'data', 'scores');
+        const snap = await getDoc(scoresRef);
+        if(snap.exists()) {
+          const data = snap.data();
+          const savedResetWeek = data.resetWeek || '';
+          const savedResetDay = data.resetDay || '';
+          const updates = {};
+          if(!savedResetWeek) {
+            updates.resetWeek = thisMonday;
+          } else if(savedResetWeek !== thisMonday) {
+            updates.weekPts = 0;
+            updates.resetWeek = thisMonday;
+          }
+          if(!savedResetDay) {
+            updates.resetDay = todayStr;
+          } else if(savedResetDay !== todayStr) {
+            updates.todayPts = 0;
+            updates.resetDay = todayStr;
+          }
+          if(Object.keys(updates).length) {
+            updates.updatedAt = new Date().toISOString();
+            await setDoc(scoresRef, updates, { merge: true });
+          }
+        }
+      } catch(e) {
+        console.warn('[scoresReset] Firestore 리셋 실패:', e.message);
+      }
+    })();
+
+    // 주간 리셋: Firestore hwlog 초기화 (다중 기기 가드 포함)
+    (async () => {
+      try {
+        const thisMonday = mondayStr(getMonday(new Date()));
+        const hwLogRef = doc(db, 'families', familyCode, 'data', 'hwlog');
+        const snap = await getDoc(hwLogRef);
+        if(snap.exists()) {
+          const data = snap.data();
+          const savedResetWeek = data.resetWeek || '';
+          if(!savedResetWeek) {
+            await setDoc(hwLogRef, { resetWeek: thisMonday }, { merge: true });
+          } else if(savedResetWeek !== thisMonday) {
+            await setDoc(hwLogRef, { hwLog: JSON.stringify({}), resetWeek: thisMonday, updatedAt: new Date().toISOString() }, { merge: true });
+          }
+        }
+      } catch(e) {
+        console.warn('[hwLogReset] Firestore 리셋 실패:', e.message);
+      }
+    })();
+
+    // 주간 리셋: Firestore bonuslog 정리 (이번주 이전 항목 삭제, 다중 기기 가드 포함)
+    (async () => {
+      try {
+        const monday = getMonday(new Date());
+        const thisMonday = mondayStr(monday);
+        const mondayTs = monday.getTime();
+        const bonusLogRef = doc(db, 'families', familyCode, 'data', 'bonuslog');
+        const snap = await getDoc(bonusLogRef);
+        if(snap.exists()) {
+          const data = snap.data();
+          const savedResetWeek = data.resetWeek || '';
+          if(!savedResetWeek) {
+            await setDoc(bonusLogRef, { resetWeek: thisMonday }, { merge: true });
+          } else if(savedResetWeek !== thisMonday) {
+            const loaded = data.bonusLog ? JSON.parse(data.bonusLog) : {};
+            const pruned = {};
+            Object.keys(loaded).forEach(k => {
+              const ts = loaded[k].ts || parseInt(k);
+              if(ts >= mondayTs) pruned[k] = loaded[k];
+            });
+            await setDoc(bonusLogRef, { bonusLog: JSON.stringify(pruned), resetWeek: thisMonday, updatedAt: new Date().toISOString() }, { merge: true });
+          }
+        }
+      } catch(e) {
+        console.warn('[bonusLogReset] Firestore 리셋 실패:', e.message);
+      }
+    })();
+
+    // 주간 리셋: Firestore arrive 정리 (이번주 이전 날짜 키 삭제, 다중 기기 가드 포함)
+    (async () => {
+      try {
+        const thisMonday = mondayStr(getMonday(new Date()));
+        const arriveRef = doc(db, 'families', familyCode, 'data', 'arrive');
+        const snap = await getDoc(arriveRef);
+        if(snap.exists()) {
+          const data = snap.data();
+          const savedResetWeek = data.resetWeek || '';
+          if(!savedResetWeek) {
+            await setDoc(arriveRef, { resetWeek: thisMonday }, { merge: true });
+          } else if(savedResetWeek !== thisMonday) {
+            const loaded = data.arriveData ? JSON.parse(data.arriveData) : {};
+            const pruned = {};
+            Object.keys(loaded).forEach(dateKey => {
+              if(dateKey >= thisMonday) pruned[dateKey] = loaded[dateKey];
+            });
+            await setDoc(arriveRef, { arriveData: JSON.stringify(pruned), resetWeek: thisMonday, updatedAt: new Date().toISOString() }, { merge: true });
+          }
+        }
+      } catch(e) {
+        console.warn('[arriveReset] Firestore 리셋 실패:', e.message);
+      }
+    })();
+
+    // 로컬 도착 데이터 정리: 이번주 이전 날짜 키 삭제 (기기별 로컬 저장공간 정리, 매 마운트마다 재실행 가능한 멱등 작업)
+    // arrive의 onSnapshot 병합({...prev,...loaded})은 예전 날짜 키를 지우지 못하므로 로컬에서 별도로 정리
+    const thisMondayForArrivePrune = mondayStr(getMonday(new Date()));
+    const todayKeyForArrivePrune = new Date().toISOString().slice(0,10);
+    setArriveData(prev => {
+      const pruned = {};
+      Object.keys(prev).forEach(dateKey => {
+        if(dateKey >= thisMondayForArrivePrune) pruned[dateKey] = prev[dateKey];
+      });
+      if(!pruned[todayKeyForArrivePrune]) pruned[todayKeyForArrivePrune] = {};
+      localStorage.setItem('chodinglife_arrive_v1', JSON.stringify(pruned));
+      return pruned;
+    });
+
     // 스케쥴 감지
     const schedRef = doc(db, 'families', familyCode, 'data', 'schedule');
     unsubs.push(onSnapshot(schedRef, (snap) => {

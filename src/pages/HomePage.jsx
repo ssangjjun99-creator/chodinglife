@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import PieChart from '../components/PieChart';
+import ChildSettingsModal from '../components/ChildSettingsModal';
 
 const BG_BASE = (process.env.PUBLIC_URL || '') + '/images/';
 
 export default function HomePage() {
   const { SCH, childPhotoUrl, secretReset, role, setCurrentPage, setParentTab, message } = useApp();
+  const [showChildSettings, setShowChildSettings] = useState(false);
   const [clock, setClock] = useState('');
   const [clockDate, setClockDate] = useState('');
   const [curD, setCurD] = useState(() => { const d=new Date().getDay(); return d===0?6:d-1; });
@@ -66,11 +68,35 @@ export default function HomePage() {
       }} />
       <div className="topbar">
         <div>
-          <div className="clock-small">{clock}</div>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <div className="clock-small">{clock}</div>
+            {role === 'child' && (
+              <button
+                onClick={() => setShowChildSettings(true)}
+                style={{
+                  border:'none',
+                  background:'none',
+                  cursor:'pointer',
+                  width:40,
+                  height:40,
+                  display:'flex',
+                  alignItems:'center',
+                  justifyContent:'center',
+                  padding:0,
+                  fontSize:20,
+                  opacity:0.5,
+                }}
+              >{'⚙️'}</button>
+            )}
+          </div>
           <div className="clock-date">{clockDate}</div>
         </div>
         <span className="topbar-txt" onClick={secretReset} style={{cursor:'pointer',padding:8}}>✦</span>
       </div>
+
+      {showChildSettings && (
+        <ChildSettingsModal onClose={() => setShowChildSettings(false)} />
+      )}
 
       {/* overflow:hidden → chart-outer marginTop(14px) 붕괴 방지 → top 기준 확정 */}
       <div style={{position:'relative',width:'100%',overflow:'hidden'}}>

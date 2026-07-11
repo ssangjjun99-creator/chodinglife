@@ -1,3 +1,6 @@
+import { useEffect, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { useApp } from './context/AppContext';
 import Toast from './components/Toast';
 import Navbar from './components/Navbar';
@@ -12,7 +15,22 @@ import ParentPage from './pages/ParentPage';
 import WordGamePage from './pages/WordGamePage';
 
 function AppInner() {
-  const { role, fbUser, authReady, currentPage } = useApp();
+  const { role, fbUser, authReady, currentPage, setCurrentPage } = useApp();
+
+  const currentPageRef = useRef(currentPage);
+  currentPageRef.current = currentPage;
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listenerPromise = CapacitorApp.addListener('backButton', () => {
+      if (currentPageRef.current !== 'main') {
+        setCurrentPage('main');
+      } else if (window.confirm('초딩생활을 종료할까요?')) {
+        CapacitorApp.exitApp();
+      }
+    });
+    return () => { listenerPromise.then(l => l.remove()); };
+  }, [setCurrentPage]);
 
   // Firebase 인증 초기화 대기
   if(!authReady) {
