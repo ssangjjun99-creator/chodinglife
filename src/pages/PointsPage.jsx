@@ -1,19 +1,49 @@
 import { useApp } from '../context/AppContext';
-import { RW } from '../utils/scheduleUtils';
+import { RW, getMonday, mondayStr } from '../utils/scheduleUtils';
+
+const WEEKDAY_KR = ['일','월','화','수','목','금','토'];
 
 export default function PointsPage() {
   const { wkS, todayS, goal, hwLog, bonusLog, arriveData, todayKey, rwI, setRwI, toast } = useApp();
 
   const pct = Math.min(100, Math.round((wkS/goal)*100));
 
-  const now = new Date();
-  const dateStr = `(${String(now.getFullYear()).slice(2)}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')})`;
+  // 이번주(월요일 이후) 도착 기록을 날짜별로 그룹핑, 최신 날짜 순
+  const thisMonday = mondayStr(getMonday(new Date()));
+  const weekArriveGroups = Object.keys(arriveData||{})
+    .filter(k => k >= thisMonday)
+    .sort((a,b) => b.localeCompare(a))
+    .map(dateKey => ({
+      dateKey,
+      entries: Object.entries(arriveData[dateKey]||{}).filter(([,v])=>v),
+    }))
+    .filter(g => g.entries.length > 0);
 
-  // 오늘 도착 목록 (arriveData[todayKey])
-  const arriveEntries = Object.entries(arriveData[todayKey]||{}).filter(([,v])=>v);
+  const formatDateHeader = (dateKey) => {
+    const [y,m,d] = dateKey.split('-').map(Number);
+    const wd = WEEKDAY_KR[new Date(y, m-1, d).getDay()];
+    return dateKey === todayKey ? `오늘 (${m}/${d})` : `${m}/${d} (${wd})`;
+  };
 
-  // 숙제 완료 이력
-  const hwLogs = Object.values(hwLog||{}).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  // 숙제 완료 이력: 승인 시각(ts) 기준 날짜별 그룹핑, 시각 없는 옛 기록은 "이번주"로 묶음
+  const hwLogGroups = {};
+  const hwLogNoTs = [];
+  Object.values(hwLog||{}).forEach(log => {
+    if(!log.ts) { hwLogNoTs.push(log); return; }
+    const d = new Date(log.ts);
+    const dateKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    (hwLogGroups[dateKey] = hwLogGroups[dateKey]||[]).push(log);
+  });
+  const hwLogDateGroups = Object.keys(hwLogGroups)
+    .sort((a,b) => b.localeCompare(a))
+    .map(dateKey => ({
+      dateKey,
+      label: formatDateHeader(dateKey),
+      logs: hwLogGroups[dateKey].sort((a,b)=>(b.ts||0)-(a.ts||0)),
+    }));
+  if(hwLogNoTs.length > 0) {
+    hwLogDateGroups.push({ dateKey:'no-ts', label:'이번주', logs:hwLogNoTs });
+  }
 
   // 보너스 이력
   const bonusEntries = Object.values(bonusLog||{}).sort((a,b)=>(b.ts||0)-(a.ts||0));
@@ -45,36 +75,46 @@ export default function PointsPage() {
           <div className="pts-prog"><div className="pts-fill" style={{width:`${pct}%`}} /></div>
         </div>
 
-        {/* 오늘 도착 */}
+        {/* 이번주 도착 */}
         <div className="card" style={{marginTop:10}}>
-          <div className="ch"><span className="ci">📍</span><span className="ct">오늘 도착 <span style={{fontSize:11,color:'#8aaac8',fontWeight:400}}>{dateStr}</span></span></div>
-          {arriveEntries.length === 0
+          <div className="ch"><span className="ci">📍</span><span className="ct">이번주 도착</span></div>
+          {weekArriveGroups.length === 0
             ? <div style={{textAlign:'center',padding:12,color:'#8aaac8',fontSize:12}}>도착 기록이 없어요</div>
-            : arriveEntries.map(([key]) => {
-                const parts = key.split('_');
-                const name = parts.slice(2).join('_');
-                return (
-                  <div key={key} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0',borderBottom:'1px solid #f0f7ff'}}>
-                    <span style={{flex:1,fontSize:13,fontWeight:700,color:'#0d5a7a'}}>{name}</span>
-                    <span style={{fontSize:11,color:'#2bc87a',fontWeight:700}}>+10점 ✓</span>
-                  </div>
-                );
-              })
+            : weekArriveGroups.map(({dateKey, entries}) => (
+                <div key={dateKey}>
+                  <div style={{fontSize:11,fontWeight:700,color:'#5a8aa8',padding:'8px 0 2px'}}>{formatDateHeader(dateKey)}</div>
+                  {entries.map(([key]) => {
+                    const parts = key.split('_');
+                    const name = parts.slice(2).join('_');
+                    return (
+                      <div key={key} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0',borderBottom:'1px solid #f0f7ff'}}>
+                        <span style={{flex:1,fontSize:13,fontWeight:700,color:'#0d5a7a'}}>{name}</span>
+                        <span style={{fontSize:11,color:'#2bc87a',fontWeight:700}}>+10점 ✓</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))
           }
         </div>
 
         {/* 이번주 숙제 완료 */}
         <div className="card" style={{marginTop:10}}>
           <div className="ch"><span className="ci">📚</span><span className="ct">이번주 숙제 완료</span></div>
-          {hwLogs.length === 0
+          {hwLogDateGroups.length === 0
             ? <div style={{textAlign:'center',padding:12,color:'#8aaac8',fontSize:12}}>완료된 숙제가 없어요</div>
-            : hwLogs.map((log, i) => (
-              <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0',borderBottom:'1px solid #f0f7ff'}}>
-                <span style={{fontSize:18}}>{log.emoji}</span>
-                <span style={{flex:1,fontSize:13,fontWeight:700,color:'#0d5a7a'}}>{log.name} <span style={{color:'#8aaac8',fontWeight:400}}>{log.dayLabel}요일</span></span>
-                <span style={{fontSize:11,color:'#2bc87a',fontWeight:700}}>+20점 ✓</span>
-              </div>
-            ))
+            : hwLogDateGroups.map(({dateKey, label, logs}) => (
+                <div key={dateKey}>
+                  <div style={{fontSize:11,fontWeight:700,color:'#5a8aa8',padding:'8px 0 2px'}}>{label}</div>
+                  {logs.map((log, i) => (
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0',borderBottom:'1px solid #f0f7ff'}}>
+                      <span style={{fontSize:18}}>{log.emoji}</span>
+                      <span style={{flex:1,fontSize:13,fontWeight:700,color:'#0d5a7a'}}>{log.name} <span style={{color:'#8aaac8',fontWeight:400}}>{log.dayLabel}요일</span></span>
+                      <span style={{fontSize:11,color:'#2bc87a',fontWeight:700}}>+20점 ✓</span>
+                    </div>
+                  ))}
+                </div>
+              ))
           }
         </div>
 
