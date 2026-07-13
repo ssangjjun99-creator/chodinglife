@@ -81,6 +81,12 @@ export function makeDefaultSchedule() {
   };
 }
 
+// 로컬(기기) 기준 YYYY-MM-DD. toISOString() 금지 — UTC 변환 시 KST 자정~오전9시 구간에서
+// 하루 이른 날짜가 나오는 버그가 있어, 반드시 getFullYear/getMonth/getDate로 직접 조합할 것
+export function localDateStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
 export function getMonday(d) {
   const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day;
@@ -90,11 +96,25 @@ export function getMonday(d) {
   return mon;
 }
 
-export function mondayStr(d) { return d.toISOString().slice(0,10); }
+export function mondayStr(d) { return localDateStr(d); }
+
+// 구버전 mondayStr(toISOString 기반)가 만들던, 실제 월요일보다 하루 이른 라벨.
+// 기존에 저장된 resetWeek 도장과의 호환(같은 주인지 판별)을 위해서만 사용.
+export function legacyMondayStr(thisMonday) {
+  const [y, m, day] = thisMonday.split('-').map(Number);
+  const dt = new Date(y, m-1, day);
+  dt.setDate(dt.getDate() - 1);
+  return localDateStr(dt);
+}
 
 export function checkHwWeekReset() {
   const savedWeek = localStorage.getItem('chodinglife_hw_week') || '';
   const thisMonday = mondayStr(getMonday(new Date()));
+  if(savedWeek && savedWeek === legacyMondayStr(thisMonday)) {
+    // 같은 주인데 구버전(하루 이른) 라벨로 저장돼 있던 경우 — 데이터는 건드리지 않고 도장만 새 형식으로 교체
+    localStorage.setItem('chodinglife_hw_week', thisMonday);
+    return;
+  }
   if(savedWeek !== thisMonday) {
     const current = JSON.parse(localStorage.getItem('chodinglife_hw_current') || '{}');
     localStorage.setItem('chodinglife_hw_last', JSON.stringify(current));
