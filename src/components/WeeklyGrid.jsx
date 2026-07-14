@@ -332,7 +332,7 @@ export default function WeeklyGrid() {
       {/* 블럭 추가/편집 팝업 */}
       {popup && (
         <div className="popup-overlay" onClick={e=>{if(e.target===e.currentTarget){setPopup(null);setSelCat(null);setCopySelect(false);}}}>
-          <div style={{background:'white',borderRadius:'22px 22px 0 0',padding:20,width:'100%',maxWidth:420,maxHeight:'calc(100vh - 80px)',overflowY:'auto',marginBottom:80}}>
+          <div style={{background:'white',borderRadius:'22px 22px 0 0',padding:20,width:'100%',maxWidth:420,maxHeight:'calc(100vh - 80px)',overflowY:'auto',marginBottom:'calc(80px + env(safe-area-inset-bottom))'}}>
             <div style={{fontSize:14,fontWeight:800,color:'#0d5a7a',marginBottom:12}}>
               {popup.existing?'✏️ 일정 수정':'➕ 일정 추가'} · {DN[popup.dayIdx]}
             </div>
