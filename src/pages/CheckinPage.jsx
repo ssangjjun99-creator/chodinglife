@@ -1,5 +1,5 @@
 import { useApp } from '../context/AppContext';
-import { isArriveItem, H } from '../utils/scheduleUtils';
+import { hasBell, H } from '../utils/scheduleUtils';
 
 export default function CheckinPage() {
   const { SCH, arriveData, todayKey, arriveNow } = useApp();
@@ -9,7 +9,7 @@ export default function CheckinPage() {
 
   const dateStr = `${String(now.getFullYear()).slice(2)}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
 
-  const items = (SCH[curD] || []).filter(isArriveItem);
+  const items = (SCH[curD] || []).filter(hasBell);
   const doneKeys = arriveData[todayKey] || {};
   const doneCount = items.filter((_,idx) => doneKeys[`${curD}_${idx}_${items[idx]?.name}`]).length;
 

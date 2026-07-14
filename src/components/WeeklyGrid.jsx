@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { DN, DS, WK_CATS, H, T, buildSegments, relMinToAngle } from '../utils/scheduleUtils';
+import { DN, DS, WK_CATS, H, T, buildSegments, relMinToAngle, isArriveItem, hasBell } from '../utils/scheduleUtils';
 
 const _ICON_BASE = (process.env.PUBLIC_URL || '') + '/icons/';
 const _CAT_ICON_FILE = {
@@ -80,6 +80,7 @@ export default function WeeklyGrid() {
   const [selDay, setSelDay] = useState(-1);
   const [popup, setPopup] = useState(null); // {dayIdx, startH, editIdx}
   const [selCat, setSelCat] = useState(null);
+  const [bellOn, setBellOn] = useState(false);
   const [longMenu, setLongMenu] = useState(null);
   const [copySelect, setCopySelect] = useState(false);
   const longTapTimer = useRef(null);
@@ -98,8 +99,10 @@ export default function WeeklyGrid() {
     if(existing) {
       const matched = WK_CATS.find(c=>c.n===existing.name);
       setSelCat(matched || WK_CATS.find(c=>c.id==='custom') || null);
+      setBellOn(hasBell(existing));
     } else {
       setSelCat(null);
+      setBellOn(false);
     }
   };
 
@@ -143,7 +146,7 @@ export default function WeeklyGrid() {
     });
     if(overlap){toast('다른 일정과 시간이 겹쳐요! ⚠️');return;}
 
-    const ev = {name,emoji:selCat.e,color:selCat.c,catId:selCat.id,start:s,dur:Math.max(0.1667,e-s),time:H(s)+'~'+H(e)};
+    const ev = {name,emoji:selCat.e,color:selCat.c,catId:selCat.id,start:s,dur:Math.max(0.1667,e-s),time:H(s)+'~'+H(e),bell:bellOn};
     if(editIdx>=0) items[editIdx]=ev;
     else items.push(ev);
     items.sort((a,b)=>a.start-b.start);
@@ -331,7 +334,7 @@ export default function WeeklyGrid() {
             <div style={{fontSize:11,fontWeight:700,color:'#0d5a7a',marginBottom:8}}>어떤 일정인가요?</div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:14}}>
               {WK_CATS.map(cat=>(
-                <button key={cat.id} onClick={()=>setSelCat(cat)}
+                <button key={cat.id} onClick={()=>{ setSelCat(cat); setBellOn(isArriveItem({catId:cat.id})); }}
                   style={{padding:'8px 4px',borderRadius:10,border:`2px solid ${selCat?.id===cat.id?cat.c:'#e8f0f8'}`,background:selCat?.id===cat.id?cat.c+'22':'white',cursor:'pointer',fontFamily:'inherit',transition:'all 0.15s'}}>
                   <CatIcon cat={cat} size={48} />
                   <div style={{fontSize:9,fontWeight:700,color:'#1a4a6a',marginTop:3}}>{cat.n}</div>
@@ -346,6 +349,16 @@ export default function WeeklyGrid() {
                   style={{width:'100%',padding:10,borderRadius:10,border:'1.5px solid #d4eaf5',fontSize:14,outline:'none',fontFamily:'inherit'}} />
               </div>
             )}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,padding:'10px 12px',borderRadius:12,background:'#f4f9ff',border:'1.5px solid #e8f0f8'}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:'#0d5a7a'}}>🔔 도착알림</div>
+                <div style={{fontSize:10,color:'#8aaac8',marginTop:2}}>도착 탭에 표시되고, 시작 10분 전 알림이 울려요</div>
+              </div>
+              <div onClick={()=>setBellOn(v=>!v)}
+                style={{width:36,height:20,borderRadius:10,background:bellOn?'#3a9bd5':'#d4eaf5',cursor:'pointer',position:'relative',transition:'background 0.2s',flexShrink:0}}>
+                <div style={{position:'absolute',top:2,left:bellOn?18:2,width:16,height:16,borderRadius:'50%',background:'white',transition:'left 0.2s',boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}} />
+              </div>
+            </div>
             <div style={{display:'flex',gap:8}}>
               {popup.existing&&<button onClick={deleteBlock} style={{flex:1,padding:12,borderRadius:13,background:'#fff0f0',color:'#e05555',fontSize:13,fontWeight:700,border:'none',cursor:'pointer',fontFamily:'inherit'}}>🗑️ 삭제</button>}
               {popup.existing&&<button onClick={()=>setCopySelect(v=>!v)} style={{flex:1,padding:12,borderRadius:13,background:copySelect?'#e0f0ff':'#f0f8ff',color:'#3a9bd5',fontSize:13,fontWeight:700,border:'1.5px solid #d4eaf5',cursor:'pointer',fontFamily:'inherit'}}>📋 복사</button>}

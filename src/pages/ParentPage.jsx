@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { RW, isArriveItem, H } from '../utils/scheduleUtils';
+import { RW, hasBell, H } from '../utils/scheduleUtils';
 import { CHEER_MSGS } from '../utils/cheerMsgs';
 import WeeklyGrid from '../components/WeeklyGrid';
 import { db, storage } from '../firebase/config';
@@ -44,7 +44,7 @@ export default function ParentPage() {
   // 오늘 도착 현황
   const nowD = new Date();
   const curD = nowD.getDay()===0 ? 6 : nowD.getDay()-1;
-  const todayArriveItems = (SCH[curD]||[]).filter(isArriveItem);
+  const todayArriveItems = (SCH[curD]||[]).filter(hasBell);
   const todayArrive = arriveData[todayKey]||{};
 
   const handleLogin = async () => {

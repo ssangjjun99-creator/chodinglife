@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { hasBell } from './scheduleUtils';
 
 const TEN_MIN_IN_HOURS = 1 / 6;
 
@@ -78,6 +79,7 @@ export async function scheduleClassReminders(SCH) {
 
     items.forEach((item, idx) => {
       if (typeof item.start !== 'number') return;
+      if (!hasBell(item)) return; // 종이 꺼진 항목은 예약하지 않음
       const notifyAt = dateAtHour(dayDate, item.start - TEN_MIN_IN_HOURS);
       if (notifyAt <= now) return; // 이미 지난 시각이면 건너뜀
 

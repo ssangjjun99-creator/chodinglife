@@ -68,6 +68,11 @@ export function isArriveItem(it) {
   return ARRIVE_NAMES.includes(it.name);
 }
 
+// bell 필드가 명시돼 있으면 그 값(사용자가 켜고 끈 값), 없으면 기존 카테고리 규칙(옛 데이터 호환)
+export function hasBell(it) {
+  return typeof it.bell === 'boolean' ? it.bell : isArriveItem(it);
+}
+
 export function makeDefaultSchedule() {
   const mk = (n,e,c,s,d) => ({name:n,emoji:e,color:c,start:s,dur:d,time:H(s)+'~'+H(s+d)});
   return {
