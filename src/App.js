@@ -2,9 +2,11 @@ import { useEffect, useRef, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from './firebase/config';
 import { useApp } from './context/AppContext';
+import { scheduleClassReminders, cancelClassReminders } from './utils/localNotify';
 import Toast from './components/Toast';
 import Navbar from './components/Navbar';
 import RoleSelectPage from './pages/RoleSelectPage';
@@ -18,7 +20,7 @@ import ParentPage from './pages/ParentPage';
 import WordGamePage from './pages/WordGamePage';
 
 function AppInner() {
-  const { role, fbUser, authReady, familyCode, currentPage, setCurrentPage } = useApp();
+  const { role, fbUser, authReady, familyCode, currentPage, setCurrentPage, SCH } = useApp();
 
   const currentPageRef = useRef(currentPage);
   currentPageRef.current = currentPage;
@@ -26,6 +28,12 @@ function AppInner() {
   const familyCodeRef = useRef(familyCode);
   familyCodeRef.current = familyCode;
   const pushTokenRef = useRef(null);
+
+  const roleRef = useRef(role);
+  roleRef.current = role;
+  const schRef = useRef(SCH);
+  schRef.current = SCH;
+  const pendingGotoRef = useRef(null);
 
   // FCM 토큰을 families/{familyCode}/data/fcm_tokens에 저장 (토큰을 키로 써서 중복 자동 방지)
   const saveFcmToken = useCallback(async (token, fc) => {
@@ -84,6 +92,55 @@ function AppInner() {
       saveFcmToken(pushTokenRef.current, familyCode);
     }
   }, [familyCode, saveFcmToken]);
+
+  // 학원 수업 10분 전 로컬 알림: 아이모드일 때만 예약, 부모모드면 기존 예약 전부 취소
+  const syncClassReminders = useCallback(() => {
+    if (roleRef.current === 'child') {
+      scheduleClassReminders(schRef.current);
+    } else {
+      cancelClassReminders();
+    }
+  }, []);
+
+  // 실행 시점 1) 앱 시작 시 + 역할/스케줄 변경 시(모드 전환 포함)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    syncClassReminders();
+  }, [role, SCH, syncClassReminders]);
+
+  // 실행 시점 2) 앱 재개(resume) 시 — 기존 runResetChecks의 appStateChange 패턴 참고
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listenerPromise = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) syncClassReminders();
+    });
+    return () => { listenerPromise.then(l => l.remove()); };
+  }, [syncClassReminders]);
+
+  // 로컬 알림 탭 시 도착 화면으로 이동 (아이모드 전용). 콜드 스타트 대비: 준비 안 됐으면 보관 후 재시도
+  const tryFlushPendingGoto = useCallback(() => {
+    if (!pendingGotoRef.current) return;
+    if (!authReady) return; // 아직 준비 안 됨 — authReady/role이 바뀔 때 다시 시도됨
+    if (role !== 'child') { pendingGotoRef.current = null; return; } // 부모모드면 무시
+    const linked = localStorage.getItem('chodinglife_linkedcode');
+    if (!linked) return; // 코드 입력 전이면 대기
+    if (pendingGotoRef.current === 'arrive') setCurrentPage('checkin');
+    pendingGotoRef.current = null;
+  }, [authReady, role, setCurrentPage]);
+
+  useEffect(() => { tryFlushPendingGoto(); }, [tryFlushPendingGoto]);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listenerPromise = LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+      const goto = action.notification && action.notification.extra && action.notification.extra.goto;
+      if (goto === 'arrive') {
+        pendingGotoRef.current = goto;
+        tryFlushPendingGoto();
+      }
+    });
+    return () => { listenerPromise.then(l => l.remove()); };
+  }, [tryFlushPendingGoto]);
 
   // Firebase 인증 초기화 대기
   if(!authReady) {
