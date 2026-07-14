@@ -17,6 +17,7 @@ const _CAT_ICON_FILE = {
   '꿈나라':             '10_꿈나라.png',
   '직접입력(도착알림)': '11_직접입력_도착알림.png',
   '직접입력':           '12_직접입력.png',
+  '미술':               'art.png',
 };
 
 function CatIcon({ cat, size = 24 }) {
@@ -95,7 +96,26 @@ export default function WeeklyGrid() {
   const openPopup = (dayIdx, startH, editIdx) => {
     setCopySelect(false);
     const existing = editIdx >= 0 ? (SCH[dayIdx]||[])[editIdx] : null;
-    setPopup({ dayIdx, startH, editIdx, existing });
+
+    // 새 일정(빈칸 터치)일 때만: 터치 시각 기준 앞/뒤 일정을 찾아 시작/종료 기본값을 채움
+    // (오버나이트 항목의 종료 시각은 24 초과라 h(최대 23.5)보다 항상 크므로 '앞' 후보로 절대 안 걸림 — 별도 제외 불필요)
+    let defaultStart = startH;
+    let defaultEnd = startH + 1;
+    if(!existing) {
+      const items = SCH[dayIdx]||[];
+      let prevEnd = null;
+      let nextStart = null;
+      items.forEach(it => {
+        const end = it.start + it.dur;
+        if(end <= startH && (prevEnd === null || end > prevEnd)) prevEnd = end;
+        if(it.start >= startH && (nextStart === null || it.start < nextStart)) nextStart = it.start;
+      });
+      if(prevEnd !== null) defaultStart = prevEnd;
+      if(nextStart !== null) defaultEnd = nextStart;
+      if(defaultEnd <= defaultStart) defaultEnd = defaultStart + 1;
+    }
+
+    setPopup({ dayIdx, startH, editIdx, existing, defaultStart, defaultEnd });
     if(existing) {
       const matched = WK_CATS.find(c=>c.n===existing.name);
       setSelCat(matched || WK_CATS.find(c=>c.id==='custom') || null);
@@ -320,20 +340,20 @@ export default function WeeklyGrid() {
               <div style={{flex:1,textAlign:'center'}}>
                 <div style={{fontSize:10,color:'#8aaac8',marginBottom:4}}>시작</div>
                 <input id="wkS" type="time" step="600"
-                  defaultValue={H(popup.existing?popup.existing.start:popup.startH)}
+                  defaultValue={H(popup.existing?popup.existing.start:popup.defaultStart)}
                   style={{width:'100%',padding:8,borderRadius:10,border:'1.5px solid #d4eaf5',fontSize:15,textAlign:'center',outline:'none',fontFamily:'inherit'}} />
               </div>
               <div style={{display:'flex',alignItems:'flex-end',paddingBottom:8,color:'#8aaac8',fontSize:18}}>~</div>
               <div style={{flex:1,textAlign:'center'}}>
                 <div style={{fontSize:10,color:'#8aaac8',marginBottom:4}}>종료</div>
                 <input id="wkE" type="time" step="600"
-                  defaultValue={H(popup.existing?popup.existing.start+popup.existing.dur:popup.startH+1)}
+                  defaultValue={H(popup.existing?popup.existing.start+popup.existing.dur:popup.defaultEnd)}
                   style={{width:'100%',padding:8,borderRadius:10,border:'1.5px solid #d4eaf5',fontSize:15,textAlign:'center',outline:'none',fontFamily:'inherit'}} />
               </div>
             </div>
             <div style={{fontSize:11,fontWeight:700,color:'#0d5a7a',marginBottom:8}}>어떤 일정인가요?</div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:14}}>
-              {WK_CATS.map(cat=>(
+              {WK_CATS.filter(cat=>cat.id!=='custom_arrive').map(cat=>(
                 <button key={cat.id} onClick={()=>{ setSelCat(cat); setBellOn(isArriveItem({catId:cat.id})); }}
                   style={{padding:'8px 4px',borderRadius:10,border:`2px solid ${selCat?.id===cat.id?cat.c:'#e8f0f8'}`,background:selCat?.id===cat.id?cat.c+'22':'white',cursor:'pointer',fontFamily:'inherit',transition:'all 0.15s'}}>
                   <CatIcon cat={cat} size={48} />

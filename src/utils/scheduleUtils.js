@@ -28,6 +28,8 @@ export const WK_CATS = [
   {id:'read',   n:'독서',      e:'📕', c:'#26d4b8', d:0.5},
   {id:'free',   n:'자유시간',  e:'🎮', c:'#f97fb8', d:2  },
   {id:'sleep',  n:'꿈나라',    e:'🌙', c:'#7ab8e8', d:8  },
+  {id:'art',    n:'미술',      e:'🎨', c:'#84cc16', d:1.5},
+  // custom_arrive: 모달 그리드에서는 숨김(WeeklyGrid.jsx에서 필터 제외) — 기존 저장 항목 이름/아이콘 매핑 보존용으로만 배열에 유지
   {id:'custom_arrive', n:'직접입력(도착알림)', e:'✍️', c:'#ff7043', d:1},
   {id:'custom', n:'직접입력',  e:'✍️', c:'#aabcd0', d:1  },
 ];
@@ -47,7 +49,7 @@ export const HW_INFO = {
   custom_arrive:{ n:'직접입력', e:'✍️', c:'#ff7043', bg:'#fff4f0' },
 };
 
-export const ARRIVE_IDS = ['sch','eng','math','sport','swim','piano','custom_arrive'];
+export const ARRIVE_IDS = ['sch','eng','math','sport','swim','piano','custom_arrive','art'];
 export const ARRIVE_NAMES = ['학교','영어학원','수학학원','스포츠','수영','피아노'];
 
 // hh:mm → float
