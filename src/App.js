@@ -85,13 +85,14 @@ function AppInner() {
     };
   }, [saveFcmToken]);
 
-  // familyCode가 registration 이후에 준비되는 경우 대응: 보관해둔 토큰을 그때 저장
+  // familyCode가 registration 이후에 준비되는 경우 대응 + 부모↔아이 역할 전환 시 토큰의 role 갱신
+  // (saveFcmToken이 저장 시점에 localStorage의 최신 role을 읽으므로, role이 바뀔 때도 재실행되어야 함)
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     if (pushTokenRef.current) {
       saveFcmToken(pushTokenRef.current, familyCode);
     }
-  }, [familyCode, saveFcmToken]);
+  }, [familyCode, role, saveFcmToken]);
 
   // 학원 수업 10분 전 로컬 알림: 아이모드일 때만 예약, 부모모드면 기존 예약 전부 취소
   const syncClassReminders = useCallback(() => {
