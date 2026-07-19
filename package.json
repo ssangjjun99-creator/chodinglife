@@ -5,6 +5,7 @@
   "homepage": "https://ssangjjun99-creator.github.io/chodinglife",
   "dependencies": {
     "@capacitor-community/text-to-speech": "^8.0.2",
+    "@capacitor-firebase/authentication": "^8.3.0",
     "@capacitor/android": "^8.4.1",
     "@capacitor/app": "^8.1.0",
     "@capacitor/cli": "^8.4.1",

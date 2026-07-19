@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import {
-  onAuthStateChanged, signOut, signInWithPopup,
+  onAuthStateChanged, signOut, signInWithPopup, signInWithCredential, GoogleAuthProvider,
   createUserWithEmailAndPassword, signInWithEmailAndPassword
 } from 'firebase/auth';
 import {
@@ -11,6 +11,7 @@ import {
 import {
   ref, uploadBytes, getDownloadURL, deleteObject
 } from 'firebase/storage';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { auth, db, storage, googleProvider } from '../firebase/config';
 import {
   makeDefaultSchedule, checkHwWeekReset, H, mondayStr, getMonday, HW_INFO,
@@ -747,7 +748,17 @@ export function AppProvider({ children }) {
 
   const doGoogleLogin = useCallback(async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      if(Capacitor.isNativePlatform()) {
+        // 앱(웹뷰)에서는 signInWithPopup이 "missing initial state" 에러로 실패함
+        // → 네이티브 Google 로그인(Credential Manager)으로 idToken을 받아 auth에 연결
+        const result = await FirebaseAuthentication.signInWithGoogle();
+        const idToken = result.credential?.idToken;
+        if(!idToken) throw new Error('구글 idToken을 받지 못했어요');
+        const credential = GoogleAuthProvider.credential(idToken);
+        await signInWithCredential(auth, credential);
+      } else {
+        await signInWithPopup(auth, googleProvider);
+      }
       localStorage.setItem('chodinglife_role', 'parent');
       setRole('parent');
       toast('✅ 구글 로그인 완료!');
