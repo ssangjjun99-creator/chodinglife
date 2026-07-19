@@ -144,6 +144,37 @@ export function AppProvider({ children }) {
     toastTimer.current = setTimeout(() => setToastMsg(''), 2200);
   }, []);
 
+  // familyCode가 "다른 값"으로 바뀔 때(계정/가족코드 전환) 전 계정의 로컬 캐시를 전부 청소.
+  // role/linkedcode/familycode 키는 여기서 건드리지 않음 — 호출부에서 그 직후에 새 값으로 갱신함.
+  const resetFamilyDataCache = useCallback(() => {
+    [
+      'chodinglife_sch_v1', 'chodinglife_free_v1',
+      'chodinglife_scores', 'chodinglife_goal',
+      'chodinglife_hw_current', 'chodinglife_hw_last',
+      'chodinglife_hw_photos', 'chodinglife_hw_photos_last',
+      'chodinglife_hw_log', 'chodinglife_hw_updated', 'chodinglife_hw_week',
+      'chodinglife_arrive_v1', 'chodinglife_bonus_log', 'chodinglife_rw',
+    ].forEach(k => localStorage.removeItem(k));
+
+    setSCH(makeDefaultSchedule());
+    setFREE({});
+    setWkS(0); setTodayS(0); setTotS(0);
+    setGoal(100);
+    setHwData({});
+    setHwLastData({});
+    setHwPhotos({});
+    setHwLastPhotos({});
+    setHwLog({});
+    setHwPhotoUrls({});
+    setHwPhotoUrlsLast({});
+    setHwExtra([]);
+    setArriveData({ [todayKey]: {} });
+    setBonusLog({});
+    setChildPhotoUrl(null);
+    setMessage(null);
+    setRwI([0,1,2]);
+  }, [todayKey]);
+
   // ══════════════════
   // Firebase Auth
   // ══════════════════
@@ -167,6 +198,8 @@ export function AppProvider({ children }) {
               createdAt: new Date().toISOString()
             }, { merge: true });
           }
+          const prevCode = localStorage.getItem('chodinglife_familycode');
+          if(prevCode && prevCode !== code) resetFamilyDataCache();
           localStorage.setItem('chodinglife_familycode', code);
           setFamilyCode(code);
           // 로컬 점수 → Firebase 동기화 (기존에 로그인 없이 쌓은 점수 복구)
@@ -398,6 +431,13 @@ export function AppProvider({ children }) {
           const newFREE = JSON.parse(data.FREE);
           setFREE(prev => { const m = {...prev,...newFREE}; localStorage.setItem('chodinglife_free_v1',JSON.stringify(m)); return m; });
         }
+      } else {
+        // 새 가족코드인데 스케줄 문서가 아직 없는 경우 — 이전 창고의 스케줄이 화면에 남지 않도록 기본 스케줄로 표시
+        const def = makeDefaultSchedule();
+        setSCH(def);
+        localStorage.setItem('chodinglife_sch_v1', JSON.stringify(def));
+        setFREE({});
+        localStorage.setItem('chodinglife_free_v1', JSON.stringify({}));
       }
     }, (e) => { console.warn('[onSnapshot] schedule 권한 오류:', e.code); }));
 
@@ -793,6 +833,8 @@ export function AppProvider({ children }) {
 
   const confirmChildCode = useCallback((code) => {
     if(code.length !== 6) { toast('6자리 코드를 입력해주세요!'); return false; }
+    const prevCode = localStorage.getItem('chodinglife_familycode');
+    if(prevCode && prevCode !== code) resetFamilyDataCache();
     localStorage.setItem('chodinglife_role', 'child');
     localStorage.setItem('chodinglife_linkedcode', code);
     localStorage.setItem('chodinglife_familycode', code);
@@ -800,7 +842,7 @@ export function AppProvider({ children }) {
     setFamilyCode(code);
     toast('🎉 연동 완료! 데이터 불러오는 중...');
     return true;
-  }, [toast]);
+  }, [toast, resetFamilyDataCache]);
 
   // ── 포인트
   const addScore = useCallback((pts) => {
