@@ -1417,7 +1417,7 @@ export default function WordGamePage() {
                 <div id="custom-word-screen" className="hidden g-col"
                      style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:11,
                              background:'rgba(255,255,255,0.97)'}}>
-                    <div style={{padding:'12px 16px 8px',borderBottom:'1px solid #ede9fe',flexShrink:0}}>
+                    <div style={{padding:'12px 16px 8px',paddingTop:'env(safe-area-inset-top)',borderBottom:'1px solid #ede9fe',flexShrink:0}}>
                         <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                             <button onClick={() => {
                                         goBackToSubject();
@@ -1472,8 +1472,8 @@ export default function WordGamePage() {
                         </div>
                     </div>
                     <div id="custom-word-list" style={{flex:1,overflowY:'auto',padding:'8px 16px'}}></div>
-                    <div style={{padding:'8px 16px 12px',borderTop:'1px solid #ede9fe',flexShrink:0}}>
-                        <button id="start-custom-game-btn" onClick={() => startGame('custom')} disabled
+                    <div style={{padding:'8px 16px 12px',paddingBottom:'env(safe-area-inset-bottom)',borderTop:'1px solid #ede9fe',flexShrink:0}}>
+                        <button id="start-custom-game-btn" onClick={() => startGame('custom')}
                                 style={{width:'100%',padding:14,borderRadius:16,border:'none',cursor:'pointer',
                                         fontSize:17,fontWeight:700,color:'#fff',opacity:0.4,
                                         background:'linear-gradient(135deg,#f9a8d4,#ec4899)',fontFamily:'inherit'}}>

@@ -402,7 +402,7 @@ export default function WeeklyGrid() {
       {/* 롱탭 복사/삭제 메뉴 */}
       {longMenu && (
         <div className="popup-overlay" onClick={e=>{if(e.target===e.currentTarget)setLongMenu(null);}}>
-          <div style={{background:'white',borderRadius:'22px 22px 0 0',padding:20,width:'100%',maxWidth:420}}>
+          <div style={{background:'white',borderRadius:'22px 22px 0 0',padding:20,width:'100%',maxWidth:420,marginBottom:'calc(80px + env(safe-area-inset-bottom))'}}>
             <div style={{fontSize:13,fontWeight:800,color:'#0d5a7a',marginBottom:12}}>{longMenu.ev.emoji} {longMenu.ev.name} · {DN[longMenu.dayIdx]}</div>
             <div style={{fontSize:11,fontWeight:700,color:'#5a8aa8',marginBottom:8}}>📋 다른 요일에 복사</div>
             <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>

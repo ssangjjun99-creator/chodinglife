@@ -384,7 +384,7 @@ export default function HomeworkPage() {
     };
     return (
       <div className="popup-overlay" onClick={e=>{if(e.target===e.currentTarget)setAddPopup(false)}}>
-        <div style={{background:'white',borderRadius:'22px 22px 0 0',padding:20,width:'100%',maxWidth:480,marginBottom:80}}>
+        <div style={{background:'white',borderRadius:'22px 22px 0 0',padding:20,width:'100%',maxWidth:480,marginBottom:'calc(80px + env(safe-area-inset-bottom))'}}>
           <div style={{fontSize:15,fontWeight:800,color:'#0d5a7a',marginBottom:16}}>+ 숙제 항목 추가</div>
           <div style={{fontSize:12,fontWeight:700,color:'#5a8aa8',marginBottom:6}}>항목 이름</div>
           <input
@@ -448,7 +448,7 @@ export default function HomeworkPage() {
 
     return (
       <div className="popup-overlay" onClick={e=>{if(e.target===e.currentTarget)setDayPopup(null)}}>
-        <div style={{background:'white',borderRadius:'22px 22px 0 0',padding:20,width:'100%',maxWidth:480,maxHeight:'calc(100vh - 80px)',overflowY:'auto',borderTop:isDone?'4px solid #3a9bd5':undefined,marginBottom:80}}>
+        <div style={{background:'white',borderRadius:'22px 22px 0 0',padding:20,width:'100%',maxWidth:480,maxHeight:'calc(100vh - 80px)',overflowY:'auto',borderTop:isDone?'4px solid #3a9bd5':undefined,marginBottom:'calc(80px + env(safe-area-inset-bottom))'}}>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
             <div style={{width:36,height:36,borderRadius:12,background:'#f0f4ff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>{emoji}</div>
             <div style={{flex:1}}>
