@@ -478,10 +478,12 @@ function renderCustomWordList() {
     if (customWords.length >= 10) {
         btn.disabled = false;
         btn.classList.remove('opacity-40');
+        btn.style.opacity = '1';
         btn.textContent = `🎮 게임 시작! (${customWords.length}개)`;
     } else {
         btn.disabled = true;
         btn.classList.add('opacity-40');
+        btn.style.opacity = '0.4';
         btn.textContent = `🎮 게임 시작! (${customWords.length}/10개 필요)`;
     }
 }
@@ -1475,7 +1477,7 @@ export default function WordGamePage() {
                     <div style={{padding:'8px 16px 12px',paddingBottom:'env(safe-area-inset-bottom)',borderTop:'1px solid #ede9fe',flexShrink:0}}>
                         <button id="start-custom-game-btn" onClick={() => startGame('custom')}
                                 style={{width:'100%',padding:14,borderRadius:16,border:'none',cursor:'pointer',
-                                        fontSize:17,fontWeight:700,color:'#fff',opacity:0.4,
+                                        fontSize:17,fontWeight:700,color:'#fff',
                                         background:'linear-gradient(135deg,#f9a8d4,#ec4899)',fontFamily:'inherit'}}>
                             🎮 게임 시작! (10개 이상 필요)
                         </button>
