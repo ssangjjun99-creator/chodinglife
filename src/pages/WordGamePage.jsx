@@ -1318,7 +1318,7 @@ export default function WordGamePage() {
                              background:'rgba(255,255,255,0.97)',padding:24,textAlign:'center',
                              overflowY:'auto'}}>
                     <button onClick={() => setCurrentPage('main')}
-                            style={{position:'absolute',top:12,left:12,background:'rgba(124,99,205,0.12)',
+                            style={{position:'absolute',top:'calc(12px + env(safe-area-inset-top))',left:12,background:'rgba(124,99,205,0.12)',
                                     border:'1.5px solid #c4b5fd',borderRadius:12,padding:'8px 16px',
                                     fontSize:14,color:'#7c3aed',fontWeight:700,
                                     cursor:'pointer',fontFamily:'inherit'}}>
@@ -1391,7 +1391,7 @@ export default function WordGamePage() {
                 {/* daily-complete-screen */}
                 <div id="daily-complete-screen" className="hidden g-overlay"
                      style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:20,
-                             background:'rgba(255,255,255,0.97)',padding:24,textAlign:'center',
+                             background:'rgba(255,255,255,0.97)',padding:24,paddingBottom:'env(safe-area-inset-bottom)',textAlign:'center',
                              overflowY:'auto'}}>
                     <div style={{fontSize:52,marginBottom:16}}>🌟🎊🌟</div>
                     <h3 style={{fontSize:26,fontWeight:700,color:'#7c6fcd',marginBottom:4}}>오늘의 단어 깨기 완료!</h3>
