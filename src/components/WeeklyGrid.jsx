@@ -230,13 +230,13 @@ export default function WeeklyGrid() {
       {/* 그리드 */}
       <div id="wkGrid">
         {/* 헤더 빈칸 */}
-        <div style={{background:'#f0f8ff',borderBottom:'1.5px solid #ddeef8',borderRight:'1px solid #e8f0f8',height:30}} />
+        <div style={{background:'#f0f8ff',borderBottom:'1.5px solid #ddeef8',borderRight:'1px solid #e8f0f8',height:30,position:'sticky',top:'env(safe-area-inset-top)',zIndex:5,borderTopLeftRadius:16}} />
         {DS.map((d, i)=>{
           const hasData = SCH[i]&&SCH[i].length>0;
           const isSel = i===selDay;
           return (
             <div key={d} onClick={()=>showPreview(i)}
-              style={{background:isSel?'#e8f3ff':'#f0f8ff',borderBottom:isSel?'2.5px solid #3a9bd5':'1.5px solid #ddeef8',borderRight:'1px solid #e8f0f8',height:30,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',boxShadow:isSel?'inset 0 -2px 0 #3a9bd5':'none'}}>
+              style={{background:isSel?'#e8f3ff':'#f0f8ff',borderBottom:isSel?'2.5px solid #3a9bd5':'1.5px solid #ddeef8',borderRight:'1px solid #e8f0f8',height:30,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',boxShadow:isSel?'inset 0 -2px 0 #3a9bd5':'none',position:'sticky',top:'env(safe-area-inset-top)',zIndex:5,borderTopRightRadius:i===DS.length-1?16:undefined}}>
               <span style={{fontSize:11,fontWeight:800,color:isSel?'#3a9bd5':i>=5?'#ff8fab':'#5a8aa8'}}>{d}</span>
               {hasData&&<span style={{width:5,height:5,borderRadius:'50%',background:isSel?'#3a9bd5':'#b0d4f0',marginLeft:2,display:'inline-block'}} />}
             </div>
@@ -244,7 +244,7 @@ export default function WeeklyGrid() {
         })}
 
         {/* 시간 컬럼 */}
-        <div style={{position:'relative',height:totalPx+10,borderRight:'1px solid #e8f0f8',background:'white'}}>
+        <div style={{position:'relative',height:totalPx+10,borderRight:'1px solid #e8f0f8',background:'white',borderBottomLeftRadius:16}}>
           {Array.from({length:wkSlotCount(amView)+1},(_,s)=>{
             const h = startH + s * SLOT_MIN / 60;
             if(Math.round(h*60)%60===0){
@@ -258,7 +258,7 @@ export default function WeeklyGrid() {
         {DS.map((d, dayIdx)=>{
           const isSel = dayIdx===selDay;
           return (
-            <div key={d} style={{position:'relative',height:totalPx,borderRight:'1px solid #eef4fa',background:isSel?'#f0f7ff':'white',overflow:'hidden',outline:isSel?'2px solid #3a9bd5':'none',outlineOffset:-1,zIndex:isSel?1:0}}>
+            <div key={d} style={{position:'relative',height:totalPx,borderRight:'1px solid #eef4fa',background:isSel?'#f0f7ff':'white',overflow:'hidden',outline:isSel?'2px solid #3a9bd5':'none',outlineOffset:-1,zIndex:isSel?1:0,borderBottomRightRadius:dayIdx===DS.length-1?16:undefined}}>
               {/* 시간 줄 */}
               {Array.from({length:WK_END_H-startH+1},(_,i)=>(
                 <div key={i} style={{position:'absolute',top:wkHtoY(startH+i,amView),left:0,right:0,borderTop:'1px solid #eef4fa',pointerEvents:'none'}} />

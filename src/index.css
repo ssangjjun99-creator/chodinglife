@@ -84,4 +84,4 @@ body{background:#e8f4ff;}
 .popup-sheet{background:#fff;border-radius:22px 22px 0 0;padding:20px;width:100%;max-width:420px;}
 .tpi{flex:1;padding:10px;border-radius:11px;border:1.5px solid #d4eaf5;font-size:16px;text-align:center;outline:none;font-family:inherit;}
 .tp-ok{width:100%;padding:12px;border-radius:13px;background:linear-gradient(135deg,#3a9bd5,#2ec4a9);color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;margin-top:8px;}
-#wkGrid{display:grid;grid-template-columns:30px repeat(7,1fr);margin:0 10px;background:white;border-radius:16px;box-shadow:0 2px 10px rgba(80,140,200,0.1);overflow:hidden;padding-bottom:10px;}
+#wkGrid{display:grid;grid-template-columns:30px repeat(7,1fr);margin:0 10px;background:white;border-radius:16px;box-shadow:0 2px 10px rgba(80,140,200,0.1);padding-bottom:10px;}
