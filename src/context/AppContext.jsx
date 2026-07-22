@@ -487,6 +487,10 @@ export function AppProvider({ children }) {
             return merged;
           });
         }
+      } else {
+        // 초기화(문서 삭제) 등으로 문서가 없어진 경우 — 병합을 거치지 않고 바로 비움
+        setHwData({});
+        localStorage.setItem('chodinglife_hw_current', JSON.stringify({}));
       }
     }, (e) => { console.warn('[onSnapshot] homework 권한 오류:', e.code); }));
 
@@ -494,6 +498,7 @@ export function AppProvider({ children }) {
     const photoRef = doc(db, 'families', familyCode, 'data', 'hw_photo_urls');
     unsubs.push(onSnapshot(photoRef, (snap) => {
       if(snap.exists()) setHwPhotoUrls(snap.data().urls || {});
+      else setHwPhotoUrls({});
     }, (e) => { console.warn('[onSnapshot] hw_photo_urls 권한 오류:', e.code); }));
 
     // 지난주 사진 URL 감지
@@ -514,6 +519,11 @@ export function AppProvider({ children }) {
         setTodayS(today);
         setTotS(tot);
         localStorage.setItem('chodinglife_scores', JSON.stringify({ wk, today, tot }));
+      } else {
+        setWkS(0);
+        setTodayS(0);
+        setTotS(0);
+        localStorage.setItem('chodinglife_scores', JSON.stringify({ wk: 0, today: 0, tot: 0 }));
       }
     }, (e) => { console.warn('[onSnapshot] scores 권한 오류:', e.code); }));
 
@@ -524,6 +534,9 @@ export function AppProvider({ children }) {
         const loaded = JSON.parse(snap.data().hwLog);
         setHwLog(loaded);
         localStorage.setItem('chodinglife_hw_log', JSON.stringify(loaded));
+      } else {
+        setHwLog({});
+        localStorage.setItem('chodinglife_hw_log', JSON.stringify({}));
       }
     }, (e) => { console.warn('[onSnapshot] hwlog 권한 오류:', e.code); }));
 
@@ -532,6 +545,8 @@ export function AppProvider({ children }) {
     unsubs.push(onSnapshot(profileRef, (snap) => {
       if(snap.exists() && snap.data().childPhotoUrl) {
         setChildPhotoUrl(snap.data().childPhotoUrl);
+      } else {
+        setChildPhotoUrl(null);
       }
     }, (e) => { console.warn('[onSnapshot] profile 권한 오류:', e.code); }));
 
@@ -545,6 +560,10 @@ export function AppProvider({ children }) {
           localStorage.setItem('chodinglife_arrive_v1', JSON.stringify(merged));
           return merged;
         });
+      } else {
+        const emptyArrive = { [todayKey]: {} };
+        setArriveData(emptyArrive);
+        localStorage.setItem('chodinglife_arrive_v1', JSON.stringify(emptyArrive));
       }
     }, (e) => { console.warn('[onSnapshot] arrive 권한 오류:', e.code); }));
 
@@ -555,6 +574,9 @@ export function AppProvider({ children }) {
         const loaded = JSON.parse(snap.data().bonusLog);
         setBonusLog(loaded);
         localStorage.setItem('chodinglife_bonus_log', JSON.stringify(loaded));
+      } else {
+        setBonusLog({});
+        localStorage.setItem('chodinglife_bonus_log', JSON.stringify({}));
       }
     }, (e) => { console.warn('[onSnapshot] bonuslog 권한 오류:', e.code); }));
 
