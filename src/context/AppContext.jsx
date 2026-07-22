@@ -238,18 +238,11 @@ export function AppProvider({ children }) {
   }, []);
 
   // ══════════════════
-  // 리셋 체크 (주간 Firestore 리셋 5종 + 로컬 checkHwWeekReset)
+  // 리셋 체크 (주간 Firestore 리셋 6종: hw_photo_urls/scores/hwlog/bonuslog/arrive/homework)
   // 마운트 1회 + 앱 재개(resume)/탭 다시 보임(visible) 시 재실행됨 — 도장이 같으면 아무것도 안 하므로 안전
   // ══════════════════
   const runResetChecks = useCallback(async (fc) => {
     if(!fc) return;
-
-    // 로컬 전용: 숙제 완료 UI 주간 리셋 (지난주 아카이브 포함) — 재실행 후 state도 동기화
-    checkHwWeekReset();
-    setHwData(JSON.parse(localStorage.getItem('chodinglife_hw_current') || '{}'));
-    setHwLastData(JSON.parse(localStorage.getItem('chodinglife_hw_last') || '{}'));
-    setHwPhotos(JSON.parse(localStorage.getItem('chodinglife_hw_photos') || '{}'));
-    setHwLastPhotos(JSON.parse(localStorage.getItem('chodinglife_hw_photos_last') || '{}'));
 
     // 로컬 도착 데이터 정리: 이번주 이전 날짜 키 삭제 (기기별 로컬 저장공간 정리, 재실행해도 안전한 멱등 작업)
     // arrive의 onSnapshot 병합({...prev,...loaded})은 예전 날짜 키를 지우지 못하므로 로컬에서 별도로 정리
@@ -395,6 +388,32 @@ export function AppProvider({ children }) {
     } catch(e) {
       console.warn('[arriveReset] Firestore 리셋 실패:', e.message);
     }
+
+    // 주간 리셋: Firestore homework 초기화 (다중 기기 가드 포함) — hwData(day_1~day_6 슬롯 구조는 유지, resetWeek 도장으로만 판정)
+    try {
+      const thisMonday = mondayStr(getMonday(new Date()));
+      const hwRef = doc(db, 'families', fc, 'data', 'homework');
+      const snap = await getDoc(hwRef);
+      if(snap.exists()) {
+        const data = snap.data();
+        const savedResetWeek = data.resetWeek || '';
+        if(!savedResetWeek) {
+          await setDoc(hwRef, { resetWeek: thisMonday }, { merge: true });
+        } else if(savedResetWeek === legacyMondayStr(thisMonday)) {
+          await setDoc(hwRef, { resetWeek: thisMonday }, { merge: true });
+        } else if(savedResetWeek !== thisMonday) {
+          const currentHw = data.hwData ? JSON.parse(data.hwData) : {};
+          await setDoc(hwRef, { hwData: JSON.stringify({}), hwDataLast: JSON.stringify(currentHw), resetWeek: thisMonday, updatedAt: new Date().toISOString() }, { merge: true });
+          setHwData({});
+          setHwLastData(currentHw);
+          localStorage.setItem('chodinglife_hw_current', JSON.stringify({}));
+          localStorage.setItem('chodinglife_hw_last', JSON.stringify(currentHw));
+          localStorage.setItem('chodinglife_hw_updated', new Date().toISOString());
+        }
+      }
+    } catch(e) {
+      console.warn('[homeworkReset] Firestore 리셋 실패:', e.message);
+    }
   }, []);
 
   // familyCode 변경 시 실시간 감지 시작
@@ -445,6 +464,12 @@ export function AppProvider({ children }) {
     const hwRef = doc(db, 'families', familyCode, 'data', 'homework');
     unsubs.push(onSnapshot(hwRef, (snap) => {
       if(snap.exists() && snap.data().hwData) {
+        const thisMonday = mondayStr(getMonday(new Date()));
+        const remoteResetWeek = snap.data().resetWeek || '';
+        if(remoteResetWeek && remoteResetWeek !== thisMonday && remoteResetWeek !== legacyMondayStr(thisMonday)) {
+          // 아직 새 주로 리셋되기 전(지난주 도장)인 원격 데이터 — 이번주 버킷에 섞이지 않도록 병합 건너뜀
+          return;
+        }
         const loaded = JSON.parse(snap.data().hwData);
         const remoteTime = snap.data().updatedAt || '';
         const localTime = localStorage.getItem('chodinglife_hw_updated') || '';
@@ -619,7 +644,7 @@ export function AppProvider({ children }) {
         await setDoc(hwLogRef, {
           hwLog: JSON.stringify(newLog),
           updatedAt: new Date().toISOString()
-        });
+        }, { merge: true });
       } catch(e) { console.log('hwLog 저장 실패:', e.message); }
     }
   }, [fbUser, familyCode]);
