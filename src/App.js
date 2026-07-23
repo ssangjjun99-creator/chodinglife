@@ -34,18 +34,28 @@ function AppInner() {
   const schRef = useRef(SCH);
   schRef.current = SCH;
   const pendingGotoRef = useRef(null);
+  const fcmSaveSeqRef = useRef(0);
 
   // FCM 토큰을 families/{familyCode}/data/fcm_tokens에 저장 (토큰을 키로 써서 중복 자동 방지)
-  const saveFcmToken = useCallback(async (token, fc) => {
+  // 쓰기가 비동기라 먼저 시작된 호출이 나중에 서버에 도착해 최신 role을 덮어쓸 수 있음(레이스) —
+  // 호출마다 시퀀스를 매겨, 내 쓰기가 끝난 시점에 더 최신 호출이 있었다면 최신 role로 자기 자신을 재호출해 바로잡음
+  const saveFcmToken = useCallback(async (token, fc, depth = 0) => {
     if (!token || !fc) return;
     const savedRole = localStorage.getItem('chodinglife_role');
     if (!savedRole) return;
+    const mySeq = ++fcmSaveSeqRef.current;
     try {
       const tokenDocRef = doc(db, 'families', fc, 'data', 'fcm_tokens');
       await setDoc(tokenDocRef, {
         tokens: { [token]: { role: savedRole, updatedAt: new Date().toISOString() } }
       }, { merge: true });
       console.log('[Push] 토큰 Firestore 저장 성공');
+      if (mySeq !== fcmSaveSeqRef.current && depth < 3) {
+        const latestRole = localStorage.getItem('chodinglife_role');
+        if (latestRole && latestRole !== savedRole) {
+          saveFcmToken(token, fc, depth + 1);
+        }
+      }
     } catch (e) {
       console.log('[Push] 토큰 Firestore 저장 실패:', e.message);
     }
