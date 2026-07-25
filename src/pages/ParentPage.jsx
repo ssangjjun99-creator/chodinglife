@@ -170,46 +170,6 @@ export default function ParentPage() {
               </div>
             </div>
 
-            {/* 이번주 숙제 */}
-            <div className="card" style={{marginTop:10}}>
-              <div className="ch"><span className="ci">📚</span><span className="ct">이번주 숙제</span></div>
-              {hwSubjects.length===0
-                ? <div style={{textAlign:'center',padding:12,color:'#8aaac8',fontSize:12}}>스케쥴에 학교/학원을 추가하면 여기 보여요</div>
-                : hwSubjects.map(({nm,e,c,total,done})=>(
-                    <div key={nm} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid #f0f7ff'}}>
-                      <span style={{fontSize:16}}>{e}</span>
-                      <span style={{flex:1,fontSize:13,fontWeight:700,color:'#0d5a7a'}}>{nm}</span>
-                      <span style={{fontSize:13,fontWeight:800,color:done===total&&total>0?'#2bc87a':c}}>
-                        {done}<span style={{fontSize:11,color:'#8aaac8',fontWeight:400}}>/{total} 완료</span>
-                      </span>
-                    </div>
-                  ))
-              }
-            </div>
-
-            {/* 오늘 도착 */}
-            <div className="card" style={{marginTop:10}}>
-              <div className="ch"><span className="ci">📍</span><span className="ct">오늘 도착</span></div>
-              {todayArriveItems.length===0
-                ? <div style={{textAlign:'center',padding:12,color:'#8aaac8',fontSize:12}}>오늘 도착 일정이 없어요</div>
-                : todayArriveItems.map((it,idx)=>{
-                    const key=`${curD}_${idx}_${it.name}`;
-                    const isDone=!!todayArrive[key];
-                    return (
-                      <div key={idx} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid #f0f7ff'}}>
-                        <span style={{fontSize:16}}>{it.emoji}</span>
-                        <span style={{flex:1,fontSize:13,fontWeight:700,color:'#0d5a7a'}}>{it.name}</span>
-                        <span style={{fontSize:11,color:'#8aaac8'}}>{H(it.start)}</span>
-                        {isDone
-                          ? <span style={{fontSize:11,fontWeight:700,color:'#2bc87a'}}>도착 ✓</span>
-                          : <span style={{fontSize:11,fontWeight:700,color:'#ffaa55'}}>대기중</span>
-                        }
-                      </div>
-                    );
-                  })
-              }
-            </div>
-
             {/* 보너스 포인트 */}
             <div className="card" style={{marginTop:10}}>
               <div className="ch"><span className="ci">🌟</span><span className="ct">보너스 포인트</span></div>
@@ -252,6 +212,46 @@ export default function ParentPage() {
                 >전송</button>
               </div>
               <div style={{textAlign:'right',fontSize:11,color:'#b0c8d8',marginTop:4}}>{msgInput.length}/20</div>
+            </div>
+
+            {/* 이번주 숙제 */}
+            <div className="card" style={{marginTop:10}}>
+              <div className="ch"><span className="ci">📚</span><span className="ct">이번주 숙제</span></div>
+              {hwSubjects.length===0
+                ? <div style={{textAlign:'center',padding:12,color:'#8aaac8',fontSize:12}}>스케쥴에 학교/학원을 추가하면 여기 보여요</div>
+                : hwSubjects.map(({nm,e,c,total,done})=>(
+                    <div key={nm} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid #f0f7ff'}}>
+                      <span style={{fontSize:16}}>{e}</span>
+                      <span style={{flex:1,fontSize:13,fontWeight:700,color:'#0d5a7a'}}>{nm}</span>
+                      <span style={{fontSize:13,fontWeight:800,color:done===total&&total>0?'#2bc87a':c}}>
+                        {done}<span style={{fontSize:11,color:'#8aaac8',fontWeight:400}}>/{total} 완료</span>
+                      </span>
+                    </div>
+                  ))
+              }
+            </div>
+
+            {/* 오늘 도착 */}
+            <div className="card" style={{marginTop:10}}>
+              <div className="ch"><span className="ci">📍</span><span className="ct">오늘 도착</span></div>
+              {todayArriveItems.length===0
+                ? <div style={{textAlign:'center',padding:12,color:'#8aaac8',fontSize:12}}>오늘 도착 일정이 없어요</div>
+                : todayArriveItems.map((it,idx)=>{
+                    const key=`${curD}_${idx}_${it.name}`;
+                    const isDone=!!todayArrive[key];
+                    return (
+                      <div key={idx} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid #f0f7ff'}}>
+                        <span style={{fontSize:16}}>{it.emoji}</span>
+                        <span style={{flex:1,fontSize:13,fontWeight:700,color:'#0d5a7a'}}>{it.name}</span>
+                        <span style={{fontSize:11,color:'#8aaac8'}}>{H(it.start)}</span>
+                        {isDone
+                          ? <span style={{fontSize:11,fontWeight:700,color:'#2bc87a'}}>도착 ✓</span>
+                          : <span style={{fontSize:11,fontWeight:700,color:'#ffaa55'}}>대기중</span>
+                        }
+                      </div>
+                    );
+                  })
+              }
             </div>
           </div>
         )}
