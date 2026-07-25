@@ -99,6 +99,8 @@ export default function WeeklyGrid() {
 
     // 새 일정(빈칸 터치)일 때만: 터치 시각 기준 앞/뒤 일정을 찾아 시작/종료 기본값을 채움
     // (오버나이트 항목의 종료 시각은 24 초과라 h(최대 23.5)보다 항상 크므로 '앞' 후보로 절대 안 걸림 — 별도 제외 불필요)
+    // 시작: 앞 일정 끝(prevEnd)이 클릭 시각과 1시간 이내로 가까울 때만 그쪽에 스냅, 아니면 클릭 시각 그대로
+    // 종료: 기본 1시간, 단 뒤 일정(nextStart)이 그보다 먼저 시작하면 거기까지만 (빈 구간 전체를 삼키지 않음)
     let defaultStart = startH;
     let defaultEnd = startH + 1;
     if(!existing) {
@@ -110,8 +112,9 @@ export default function WeeklyGrid() {
         if(end <= startH && (prevEnd === null || end > prevEnd)) prevEnd = end;
         if(it.start >= startH && (nextStart === null || it.start < nextStart)) nextStart = it.start;
       });
-      if(prevEnd !== null) defaultStart = prevEnd;
-      if(nextStart !== null) defaultEnd = nextStart;
+      if(prevEnd !== null && startH - prevEnd <= 1.0) defaultStart = prevEnd;
+      defaultEnd = defaultStart + 1;
+      if(nextStart !== null) defaultEnd = Math.min(defaultEnd, nextStart);
       if(defaultEnd <= defaultStart) defaultEnd = defaultStart + 1;
     }
 
