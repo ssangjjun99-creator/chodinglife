@@ -170,17 +170,6 @@ export default function ParentPage() {
               </div>
             </div>
 
-            {/* 보너스 포인트 */}
-            <div className="card" style={{marginTop:10}}>
-              <div className="ch"><span className="ci">🌟</span><span className="ct">보너스 포인트</span></div>
-              <div style={{fontSize:11,color:'#8aaac8',marginBottom:8}}>누르면 즉시 포인트에 반영돼요!</div>
-              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                <button style={{padding:'8px 11px',borderRadius:10,border:'none',cursor:'pointer',background:'#e8faf0',color:'#2bc87a',fontSize:12,fontWeight:700,fontFamily:'inherit'}} onClick={()=>bonus('착한 일',15)}>😊 착한일 +15점</button>
-                <button style={{padding:'8px 11px',borderRadius:10,border:'none',cursor:'pointer',background:'#e8faf0',color:'#2bc87a',fontSize:12,fontWeight:700,fontFamily:'inherit'}} onClick={()=>bonus('말씀 듣기',15)}>👂 말씀듣기 +15점</button>
-                <button style={{padding:'8px 11px',borderRadius:10,border:'none',cursor:'pointer',background:'#e8faf0',color:'#2bc87a',fontSize:12,fontWeight:700,fontFamily:'inherit'}} onClick={()=>bonus('방 청소',10)}>🧹 방청소 +10점</button>
-              </div>
-            </div>
-
             {/* 응원메시지 */}
             <div className="card" style={{marginTop:10}}>
               <div className="ch"><span className="ci">💌</span><span className="ct">응원메시지</span></div>
@@ -212,6 +201,17 @@ export default function ParentPage() {
                 >전송</button>
               </div>
               <div style={{textAlign:'right',fontSize:11,color:'#b0c8d8',marginTop:4}}>{msgInput.length}/20</div>
+            </div>
+
+            {/* 보너스 포인트 */}
+            <div className="card" style={{marginTop:10}}>
+              <div className="ch"><span className="ci">🌟</span><span className="ct">보너스 포인트</span></div>
+              <div style={{fontSize:11,color:'#8aaac8',marginBottom:8}}>누르면 즉시 포인트에 반영돼요!</div>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                <button style={{padding:'8px 11px',borderRadius:10,border:'none',cursor:'pointer',background:'#e8faf0',color:'#2bc87a',fontSize:12,fontWeight:700,fontFamily:'inherit'}} onClick={()=>bonus('착한 일',15)}>😊 착한일 +15점</button>
+                <button style={{padding:'8px 11px',borderRadius:10,border:'none',cursor:'pointer',background:'#e8faf0',color:'#2bc87a',fontSize:12,fontWeight:700,fontFamily:'inherit'}} onClick={()=>bonus('말씀 듣기',15)}>👂 말씀듣기 +15점</button>
+                <button style={{padding:'8px 11px',borderRadius:10,border:'none',cursor:'pointer',background:'#e8faf0',color:'#2bc87a',fontSize:12,fontWeight:700,fontFamily:'inherit'}} onClick={()=>bonus('방 청소',10)}>🧹 방청소 +10점</button>
+              </div>
             </div>
 
             {/* 이번주 숙제 */}
