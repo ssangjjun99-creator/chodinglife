@@ -32,6 +32,30 @@ export default function LoginPage() {
           <div style={{fontSize:13,color:'#5aaac8',lineHeight:1.5}}>로그인하면 아이 폰과<br/>실시간으로 연동돼요! 📱</div>
         </div>
 
+        {/* 카카오 로그인 */}
+        <button
+          onClick={doKakaoLogin}
+          style={{width:'100%',padding:13,borderRadius:13,border:'none',background:'#FEE500',color:'#3A2929',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit',marginBottom:10}}
+        >
+          카카오로 시작하기
+        </button>
+
+        {/* 구글 로그인 */}
+        <button
+          onClick={doGoogleLogin}
+          style={{width:'100%',padding:13,borderRadius:13,border:'1.5px solid #d4eaf5',background:'white',color:'#444',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:10,boxShadow:'0 2px 8px rgba(0,0,0,0.06)',marginBottom:16}}
+        >
+          <span style={{fontSize:18,fontWeight:900,color:'#4285F4'}}>G</span>
+          구글로 시작하기
+        </button>
+
+        {/* 구분선 */}
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+          <div style={{flex:1,height:1,background:'#d4eaf5'}} />
+          <div style={{fontSize:12,color:'#8aaac8'}}>또는 이메일로</div>
+          <div style={{flex:1,height:1,background:'#d4eaf5'}} />
+        </div>
+
         {/* 탭 */}
         <div style={{display:'flex',background:'#e8f4fb',borderRadius:12,padding:3,marginBottom:20}}>
           <button
@@ -73,30 +97,6 @@ export default function LoginPage() {
             style={{width:'100%',padding:13,borderRadius:13,border:'none',background:'linear-gradient(135deg,#3a9bd5,#2ec4a9)',color:'white',fontSize:15,fontWeight:800,cursor:'pointer',fontFamily:'inherit'}}
           >{mode==='login'?'로그인':'회원가입'}</button>
         </div>
-
-        {/* 구분선 */}
-        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
-          <div style={{flex:1,height:1,background:'#d4eaf5'}} />
-          <div style={{fontSize:12,color:'#8aaac8'}}>또는</div>
-          <div style={{flex:1,height:1,background:'#d4eaf5'}} />
-        </div>
-
-        {/* 구글 로그인 */}
-        <button
-          onClick={doGoogleLogin}
-          style={{width:'100%',padding:13,borderRadius:13,border:'1.5px solid #d4eaf5',background:'white',color:'#444',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:10,boxShadow:'0 2px 8px rgba(0,0,0,0.06)',marginBottom:16}}
-        >
-          <span style={{fontSize:18,fontWeight:900,color:'#4285F4'}}>G</span>
-          구글로 로그인하기
-        </button>
-
-        {/* [테스트] 카카오 OIDC 로그인 연결 검증용 임시 버튼 — 정식 배치/디자인은 다음 단계 */}
-        <button
-          onClick={doKakaoLogin}
-          style={{width:'100%',padding:13,borderRadius:13,border:'1.5px solid #d4eaf5',background:'white',color:'#444',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit',marginBottom:16}}
-        >
-          [테스트] 카카오 로그인
-        </button>
 
         {/* 뒤로가기 */}
         <div style={{textAlign:'center'}}>
