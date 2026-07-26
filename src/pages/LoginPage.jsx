@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 const ICON_BASE = (process.env.PUBLIC_URL || '') + '/icons/';
 
 export default function LoginPage() {
-  const { doEmailLogin, doEmailSignup, doGoogleLogin, resetRole } = useApp();
+  const { doEmailLogin, doEmailSignup, doGoogleLogin, doKakaoLogin, resetRole } = useApp();
   const [emailV, setEmailV] = useState('');
   const [pwV, setPwV] = useState('');
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
@@ -88,6 +88,14 @@ export default function LoginPage() {
         >
           <span style={{fontSize:18,fontWeight:900,color:'#4285F4'}}>G</span>
           구글로 로그인하기
+        </button>
+
+        {/* [테스트] 카카오 OIDC 로그인 연결 검증용 임시 버튼 — 정식 배치/디자인은 다음 단계 */}
+        <button
+          onClick={doKakaoLogin}
+          style={{width:'100%',padding:13,borderRadius:13,border:'1.5px solid #d4eaf5',background:'white',color:'#444',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit',marginBottom:16}}
+        >
+          [테스트] 카카오 로그인
         </button>
 
         {/* 뒤로가기 */}

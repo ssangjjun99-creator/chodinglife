@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import {
-  onAuthStateChanged, signOut, signInWithPopup, signInWithCredential, GoogleAuthProvider,
+  onAuthStateChanged, signOut, signInWithPopup, signInWithCredential, GoogleAuthProvider, OAuthProvider,
   createUserWithEmailAndPassword, signInWithEmailAndPassword
 } from 'firebase/auth';
 import {
@@ -854,6 +854,29 @@ export function AppProvider({ children }) {
     }
   }, [toast]);
 
+  // [테스트] 카카오 OIDC 로그인 연결 검증용 — doGoogleLogin과 동일한 패턴
+  const doKakaoLogin = useCallback(async () => {
+    try {
+      if(Capacitor.isNativePlatform()) {
+        const result = await FirebaseAuthentication.signInWithOpenIdConnect({ providerId: 'oidc.oidc.kakao' });
+        const { idToken, nonce } = result.credential || {};
+        const provider = new OAuthProvider('oidc.oidc.kakao');
+        const credential = provider.credential({ idToken, rawNonce: nonce });
+        await signInWithCredential(auth, credential);
+      } else {
+        const provider = new OAuthProvider('oidc.oidc.kakao');
+        await signInWithPopup(auth, provider);
+      }
+      localStorage.setItem('chodinglife_role', 'parent');
+      setRole('parent');
+      toast('✅ 카카오 로그인 완료!');
+      console.log('[Kakao] 로그인 성공', auth.currentUser?.uid);
+    } catch(e) {
+      console.log('[Kakao] 로그인 실패', e.code, e.message);
+      if(e.code !== 'auth/popup-closed-by-user') toast('로그인 실패 😢');
+    }
+  }, [toast]);
+
   const selectRole = useCallback((r) => {
     setRole(r);
     localStorage.setItem('chodinglife_role', r);
@@ -1024,7 +1047,7 @@ export function AppProvider({ children }) {
     // 저장
     saveSCH, saveScores, saveHwData, saveHwLog, saveArrive, saveHwPhotos, saveHwExtra,
     // Auth
-    doEmailLogin, doEmailSignup, doGoogleLogin, doLogout,
+    doEmailLogin, doEmailSignup, doGoogleLogin, doKakaoLogin, doLogout,
     selectRole, resetRole, copyFamilyCode, confirmChildCode,
     // 액션
     toast, addScore, subtractScore, bonus, sendMessage, deleteMessage, parentApproveHw,
