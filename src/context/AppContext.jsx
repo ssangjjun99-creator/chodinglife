@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import {
-  onAuthStateChanged, signOut, signInWithPopup, signInWithCredential, GoogleAuthProvider, OAuthProvider,
+  onAuthStateChanged, signOut, signInWithPopup, signInWithCredential, signInWithCustomToken, GoogleAuthProvider, OAuthProvider,
   createUserWithEmailAndPassword, signInWithEmailAndPassword
 } from 'firebase/auth';
 import {
@@ -11,8 +11,9 @@ import {
 import {
   ref, uploadBytes, getDownloadURL, deleteObject
 } from 'firebase/storage';
+import { httpsCallable } from 'firebase/functions';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
-import { auth, db, storage, googleProvider } from '../firebase/config';
+import { auth, db, storage, googleProvider, functions } from '../firebase/config';
 import {
   makeDefaultSchedule, checkHwWeekReset, H, mondayStr, getMonday, HW_INFO,
   localDateStr, legacyMondayStr
@@ -854,15 +855,35 @@ export function AppProvider({ children }) {
     }
   }, [toast]);
 
-  // [테스트] 카카오 OIDC 로그인 연결 검증용 — doGoogleLogin과 동일한 패턴
+  // 카카오 OIDC 로그인 — 네이티브는 커스텀 토큰 브릿지(exchangeKakaoToken) 경유
+  // (signInWithOpenIdConnect가 nonce를 반환하지 않아 JS signInWithCredential이 auth/missing-or-invalid-nonce로 막힘 — 우회)
   const doKakaoLogin = useCallback(async () => {
     try {
       if(Capacitor.isNativePlatform()) {
-        const result = await FirebaseAuthentication.signInWithOpenIdConnect({ providerId: 'oidc.oidc.kakao' });
-        const { idToken, nonce } = result.credential || {};
-        const provider = new OAuthProvider('oidc.oidc.kakao');
-        const credential = provider.credential({ idToken, rawNonce: nonce });
-        await signInWithCredential(auth, credential);
+        await FirebaseAuthentication.signInWithOpenIdConnect({ providerId: 'oidc.oidc.kakao' });
+        let nativeIdToken;
+        try {
+          const idTokenResult = await FirebaseAuthentication.getIdToken();
+          nativeIdToken = idTokenResult.token;
+        } catch(e) {
+          console.log('[Kakao] 네이티브 idToken 획득 실패', e.code, e.message);
+          throw e;
+        }
+        let customToken;
+        try {
+          const callable = httpsCallable(functions, 'exchangeKakaoToken');
+          const res = await callable({ idToken: nativeIdToken });
+          customToken = res.data?.customToken;
+        } catch(e) {
+          console.log('[Kakao] exchangeKakaoToken 호출 실패', e.code, e.message);
+          throw e;
+        }
+        try {
+          await signInWithCustomToken(auth, customToken);
+        } catch(e) {
+          console.log('[Kakao] signInWithCustomToken 실패', e.code, e.message);
+          throw e;
+        }
       } else {
         const provider = new OAuthProvider('oidc.oidc.kakao');
         await signInWithPopup(auth, provider);
