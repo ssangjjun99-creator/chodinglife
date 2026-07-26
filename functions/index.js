@@ -387,3 +387,18 @@ exports.onBonusNotify = onDocumentWritten(
     );
   }
 );
+
+// 카카오 OIDC 로그인 커스텀 토큰 브릿지: 네이티브에서 이미 검증된 Firebase idToken을
+// 서버에서 재검증한 뒤, 같은 UID로 커스텀 토큰을 발급해 JS(웹 레이어) auth와 동기화시킴
+// (signInWithOpenIdConnect가 nonce를 반환하지 않아 JS signInWithCredential이 막히는 문제 우회)
+exports.exchangeKakaoToken = onCall({ region: "us-central1" }, async (request) => {
+  const { idToken } = request.data;
+  if (!idToken) throw new HttpsError("invalid-argument", "idToken이 없습니다.");
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const customToken = await admin.auth().createCustomToken(decoded.uid);
+    return { customToken };
+  } catch (e) {
+    throw new HttpsError("unauthenticated", "idToken 검증 실패: " + e.message);
+  }
+});
