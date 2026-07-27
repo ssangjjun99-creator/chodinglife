@@ -165,15 +165,16 @@ export function buildSegments(rawEvents, ap) {
   });
 
   if(ap === 'am'){
-    const overnightSrc = rawEvents
-      .filter(ev => Math.round((ev.start + ev.dur)*60) >= 1440)
-      .sort((a,b) => (b.start+b.dur) - (a.start+a.dur))[0]
-      || rawEvents[rawEvents.length-1];
+    const candidates = rawEvents.filter(ev => Math.round((ev.start + ev.dur) * 60) >= 1440);
+    if(candidates.length > 0) {
+      const overnightSrc = candidates.sort((a,b) => (b.start+b.dur) - (a.start+a.dur))[0];
 
-    const sentinel = { ...overnightSrc, _overnight: true };
-    for(let m = 0; m < TOTAL; m++){
-      if(tl[m] !== null) break;
-      tl[m] = sentinel;
+      const overnightEndMin = Math.round((overnightSrc.start + overnightSrc.dur - 24) * 60);
+      const sentinel = { ...overnightSrc, _overnight: true };
+      for(let m = 0; m < TOTAL && m < overnightEndMin; m++){
+        if(tl[m] !== null) break;
+        tl[m] = sentinel;
+      }
     }
   }
 
