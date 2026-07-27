@@ -82,6 +82,7 @@ export default function WeeklyGrid() {
   const [popup, setPopup] = useState(null); // {dayIdx, startH, editIdx}
   const [selCat, setSelCat] = useState(null);
   const [bellOn, setBellOn] = useState(false);
+  const [overnightOn, setOvernightOn] = useState(false);
   const [longMenu, setLongMenu] = useState(null);
   const [copySelect, setCopySelect] = useState(false);
   const longTapTimer = useRef(null);
@@ -123,9 +124,11 @@ export default function WeeklyGrid() {
       const matched = WK_CATS.find(c=>c.n===existing.name);
       setSelCat(matched || WK_CATS.find(c=>c.id==='custom') || null);
       setBellOn(hasBell(existing));
+      setOvernightOn(existing.start + existing.dur > 24);
     } else {
       setSelCat(null);
       setBellOn(false);
+      setOvernightOn(false);
     }
   };
 
@@ -152,7 +155,11 @@ export default function WeeklyGrid() {
     const eEl = document.getElementById('wkE');
     if(!sEl||!eEl) return;
     const s = T(sEl.value), e = T(eEl.value);
-    if(e<=s){toast('종료 시간이 시작보다 늦어야 해요!');return;}
+    if(overnightOn) {
+      if(e>=s){toast('다음날까지 이어지는 일정은 종료 시각을 시작보다 이르게 넣어주세요. (예: 22:00 → 08:00)');return;}
+    } else {
+      if(e<=s){toast('종료 시간이 시작보다 늦어야 해요!');return;}
+    }
     if(!selCat){toast('일정을 선택해주세요!');return;}
 
     let name = selCat.n;
@@ -162,14 +169,16 @@ export default function WeeklyGrid() {
       if(!name){toast('일정 이름을 입력해주세요!');return;}
     }
 
+    const effectiveE = overnightOn ? e + 24 : e;
+
     const items = JSON.parse(JSON.stringify(SCH[dayIdx]||[]));
     const overlap = items.some((it,idx)=>{
       if(idx===editIdx) return false;
-      return s < it.start+it.dur && e > it.start;
+      return s < it.start+it.dur && effectiveE > it.start;
     });
     if(overlap){toast('다른 일정과 시간이 겹쳐요! ⚠️');return;}
 
-    const ev = {name,emoji:selCat.e,color:selCat.c,catId:selCat.id,start:s,dur:Math.max(0.1667,e-s),time:H(s)+'~'+H(e),bell:bellOn};
+    const ev = {name,emoji:selCat.e,color:selCat.c,catId:selCat.id,start:s,dur:Math.max(0.1667,effectiveE-s),time:H(s)+'~'+H(effectiveE),bell:bellOn};
     if(editIdx>=0) items[editIdx]=ev;
     else items.push(ev);
     items.sort((a,b)=>a.start-b.start);
@@ -350,9 +359,21 @@ export default function WeeklyGrid() {
               <div style={{flex:1,textAlign:'center'}}>
                 <div style={{fontSize:10,color:'#8aaac8',marginBottom:4}}>종료</div>
                 <input id="wkE" type="time" step="600"
-                  defaultValue={H(popup.existing?popup.existing.start+popup.existing.dur:popup.defaultEnd)}
+                  defaultValue={H(popup.existing
+                    ? (popup.existing.start+popup.existing.dur > 24 ? (popup.existing.start+popup.existing.dur) % 24 : popup.existing.start+popup.existing.dur)
+                    : popup.defaultEnd)}
                   style={{width:'100%',padding:8,borderRadius:10,border:'1.5px solid #d4eaf5',fontSize:15,textAlign:'center',outline:'none',fontFamily:'inherit'}} />
               </div>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}>
+              <input
+                id="wkOvernight"
+                type="checkbox"
+                checked={overnightOn}
+                onChange={e=>setOvernightOn(e.target.checked)}
+                style={{width:16,height:16,cursor:'pointer'}}
+              />
+              <label htmlFor="wkOvernight" style={{fontSize:12,color:'#5a8aa8',cursor:'pointer'}}>다음날까지 이어짐</label>
             </div>
             <div style={{fontSize:11,fontWeight:700,color:'#0d5a7a',marginBottom:8}}>어떤 일정인가요?</div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:14}}>
