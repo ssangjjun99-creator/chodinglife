@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import PieChart from '../components/PieChart';
 import ChildSettingsModal from '../components/ChildSettingsModal';
@@ -16,6 +16,9 @@ export default function HomePage() {
   const [nowNext, setNowNext] = useState('부모님 → 스케쥴 탭');
   const [nowEmoji, setNowEmoji] = useState('👨‍👩‍👧');
   const [isDaytime, setIsDaytime] = useState(() => { const h=new Date().getHours(); return h>=6&&h<18; });
+  const lastDayRef = useRef(curD);
+  const lastApRef = useRef(curAP);
+  const manualApRef = useRef(false);
 
   useEffect(() => {
     const tick = () => {
@@ -30,6 +33,27 @@ export default function HomePage() {
       const days = ['일','월','화','수','목','금','토'];
       setClockDate(`${yy}.${mm}.${dd} ${days[now.getDay()]}요일`);
       setIsDaytime(h>=6&&h<18);
+
+      // 날짜(요일)가 실제로 바뀐 순간에만 curD/curAP 갱신 — 매초 재계산하면
+      // 184~187행의 수동 오전/오후 탭이 1초 뒤 되돌아가는 버그가 생기므로 값이 같으면 아무것도 안 함
+      const d = now.getDay();
+      const dayIdx = d===0?6:d-1;
+      if(dayIdx !== lastDayRef.current) {
+        lastDayRef.current = dayIdx;
+        setCurD(dayIdx);
+        setCurAP('am');
+        manualApRef.current = false; // 새 날 시작 — 수동 고정 해제하고 다시 자동으로 따라가게
+        lastApRef.current = 'am';
+      }
+
+      // 정오(12시) 경계 감지 — 사용자가 오전/오후 탭을 수동으로 누른 적 있으면 건드리지 않음
+      const ap = h < 12 ? 'am' : 'pm';
+      if(ap !== lastApRef.current) {
+        lastApRef.current = ap;
+        if(!manualApRef.current) {
+          setCurAP(ap);
+        }
+      }
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -182,8 +206,8 @@ export default function HomePage() {
       </div>
 
       <div className="ampm-row">
-        <div className={`ampm-btn${curAP==='am'?' on':''}`} onClick={()=>setCurAP('am')}>☀️ 오전 (0~12시)</div>
-        <div className={`ampm-btn${curAP==='pm'?' on':''}`} onClick={()=>setCurAP('pm')}>🌙 오후 (12~24시)</div>
+        <div className={`ampm-btn${curAP==='am'?' on':''}`} onClick={()=>{manualApRef.current=true;setCurAP('am');}}>☀️ 오전 (0~12시)</div>
+        <div className={`ampm-btn${curAP==='pm'?' on':''}`} onClick={()=>{manualApRef.current=true;setCurAP('pm');}}>🌙 오후 (12~24시)</div>
       </div>
     </div>
   );
