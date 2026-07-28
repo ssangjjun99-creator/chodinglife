@@ -393,6 +393,52 @@ exports.onBonusNotify = onDocumentWritten(
   }
 );
 
+// 아이가 목표 달성 후 보상을 선택(rewardlog에 새 항목)하면 부모에게 알림 (rewardlog 문서)
+exports.onRewardNotify = onDocumentWritten(
+  { document: "families/{familyCode}/data/rewardlog", region: "us-central1" },
+  async (event) => {
+    const { familyCode } = event.params;
+    const afterSnap = event.data.after;
+    if (!afterSnap || !afterSnap.exists) return;
+
+    const beforeSnap = event.data.before;
+    let beforeLog = {};
+    let afterLog = {};
+    try {
+      const beforeRaw = beforeSnap && beforeSnap.exists ? beforeSnap.data().rewardLog : null;
+      beforeLog = beforeRaw ? JSON.parse(beforeRaw) : {};
+    } catch (e) {
+      beforeLog = {};
+    }
+    try {
+      const afterRaw = afterSnap.data().rewardLog;
+      afterLog = afterRaw ? JSON.parse(afterRaw) : {};
+    } catch (e) {
+      afterLog = {};
+    }
+
+    // 새로 추가된 보상 선택 항목만 감지
+    const newKeys = Object.keys(afterLog).filter((k) => !beforeLog[k]);
+    if (newKeys.length === 0) {
+      console.log(`[onRewardNotify] ${familyCode}: 새로운 보상 선택 없음`);
+      return;
+    }
+
+    // rewardLog 키는 Date.now() 문자열이라 숫자형 키 → JS가 자동으로 오름차순 정렬해줌
+    const latestEntry = afterLog[newKeys[newKeys.length - 1]] || {};
+    const rewardName = latestEntry.name || "보상";
+
+    await sendToTokens(
+      familyCode,
+      "parent",
+      "보상 선택 🎉",
+      `"${rewardName}"을(를) 선택했어요!`,
+      "onRewardNotify",
+      "parent_status"
+    );
+  }
+);
+
 // 카카오 OIDC 로그인 커스텀 토큰 브릿지: 네이티브에서 이미 검증된 Firebase idToken을
 // 서버에서 재검증한 뒤, 같은 UID로 커스텀 토큰을 발급해 JS(웹 레이어) auth와 동기화시킴
 // (signInWithOpenIdConnect가 nonce를 반환하지 않아 JS signInWithCredential이 막히는 문제 우회)

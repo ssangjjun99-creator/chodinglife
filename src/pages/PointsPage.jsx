@@ -4,7 +4,7 @@ import { RW, getMonday, mondayStr } from '../utils/scheduleUtils';
 const WEEKDAY_KR = ['일','월','화','수','목','금','토'];
 
 export default function PointsPage() {
-  const { wkS, todayS, goal, hwLog, bonusLog, arriveData, todayKey, rwI, setRwI, toast } = useApp();
+  const { wkS, todayS, goal, hwLog, bonusLog, arriveData, todayKey, rwI, setRwI, toast, pickReward } = useApp();
 
   const pct = Math.min(100, Math.round((wkS/goal)*100));
 
@@ -48,9 +48,9 @@ export default function PointsPage() {
   // 보너스 이력
   const bonusEntries = Object.values(bonusLog||{}).sort((a,b)=>(b.ts||0)-(a.ts||0));
 
-  const pickRw = (idx) => {
+  const pickRw = async (idx) => {
     if(wkS < goal) { toast(`목표까지 ${goal-wkS}점 더!`); return; }
-    toast(`"${RW[rwI[idx]].n}" 선택! 부모님께 알림! 📱`);
+    await pickReward(RW[rwI[idx]].n);
   };
 
   return (

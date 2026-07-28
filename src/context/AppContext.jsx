@@ -1013,6 +1013,26 @@ export function AppProvider({ children }) {
     toast(`🌟 ${name} +${pts}점!`);
   }, [addScore, bonusLog, familyCode, toast]);
 
+  // 보상 선택 기록 (bonuslog와 동일 패턴: 타임스탬프 키맵 JSON 문자열)
+  // rewardLog는 실시간 구독 대상이 아니라 로컬 state가 없으므로, bonus()처럼 스프레드하는 대신
+  // 쓰기 직전에 getDoc으로 현재 값을 읽어와 합침
+  const pickReward = useCallback(async (name) => {
+    if(!familyCode) { toast('로그인이 필요해요 😢'); return false; }
+    try {
+      const rewardRef = doc(db, 'families', familyCode, 'data', 'rewardlog');
+      const snap = await getDoc(rewardRef);
+      const existing = snap.exists() && snap.data().rewardLog ? JSON.parse(snap.data().rewardLog) : {};
+      const newLog = { ...existing, [Date.now()]: { name, ts: Date.now() } };
+      await setDoc(rewardRef, { rewardLog: JSON.stringify(newLog), updatedAt: new Date().toISOString() }, { merge: true });
+      toast(`"${name}" 선택! 부모님께 알림! 📱`);
+      return true;
+    } catch(e) {
+      console.log('보상 선택 저장 실패:', e.message);
+      toast('저장 실패 😢 다시 시도해주세요');
+      return false;
+    }
+  }, [familyCode, toast]);
+
   const sendMessage = useCallback(async (text) => {
     if(!familyCode) return;
     const today = localDateStr(new Date());
@@ -1102,7 +1122,7 @@ export function AppProvider({ children }) {
     doEmailLogin, doEmailSignup, doGoogleLogin, doKakaoLogin, doLogout,
     selectRole, resetRole, copyFamilyCode, confirmChildCode,
     // 액션
-    toast, addScore, subtractScore, bonus, sendMessage, deleteMessage, parentApproveHw,
+    toast, addScore, subtractScore, bonus, pickReward, sendMessage, deleteMessage, parentApproveHw,
     arriveNow, secretReset,
     // 사진
     uploadChildPhoto, removeChildPhoto, uploadHwPhoto, deleteHwPhoto,
