@@ -126,6 +126,11 @@ export function AppProvider({ children }) {
     JSON.parse(localStorage.getItem('chodinglife_bonus_log') || '{}')
   );
 
+  // ── 보상 선택 로그
+  const [rewardLog, setRewardLog] = useState(() =>
+    JSON.parse(localStorage.getItem('chodinglife_reward_log') || '{}')
+  );
+
   // ── 응원메시지
   const [message, setMessage] = useState(null);
 
@@ -611,6 +616,19 @@ export function AppProvider({ children }) {
         localStorage.setItem('chodinglife_bonus_log', JSON.stringify({}));
       }
     }, (e) => { console.warn('[onSnapshot] bonuslog 권한 오류:', e.code); }));
+
+    // 보상 선택 로그 감지 (아이가 쓰면 부모가 실시간으로 수신)
+    const rewardLogSnapRef = doc(db, 'families', familyCode, 'data', 'rewardlog');
+    unsubs.push(onSnapshot(rewardLogSnapRef, (snap) => {
+      if(snap.exists() && snap.data().rewardLog) {
+        const loaded = JSON.parse(snap.data().rewardLog);
+        setRewardLog(loaded);
+        localStorage.setItem('chodinglife_reward_log', JSON.stringify(loaded));
+      } else {
+        setRewardLog({});
+        localStorage.setItem('chodinglife_reward_log', JSON.stringify({}));
+      }
+    }, (e) => { console.warn('[onSnapshot] rewardlog 권한 오류:', e.code); }));
 
     // 응원메시지 감지 (부모가 쓰면 아이가 실시간으로 수신)
     const msgSnapRef = doc(db, 'families', familyCode, 'data', 'message');
@@ -1108,6 +1126,16 @@ export function AppProvider({ children }) {
     }
   }, [resetRole]);
 
+  // ── 이번 주 보상 선택 (저장/리셋 없음 — 최신 선택의 타임스탬프가 이번 주(월요일 시작)인지만 매번 계산)
+  const rewardKeys = Object.keys(rewardLog);
+  const latestReward = rewardKeys.length > 0 ? rewardLog[rewardKeys[rewardKeys.length - 1]] : null;
+  const thisWeekReward = (() => {
+    if(!latestReward) return null;
+    const thisMonday = mondayStr(getMonday(new Date()));
+    const entryDay = localDateStr(new Date(latestReward.ts));
+    return entryDay >= thisMonday ? latestReward.name : null;
+  })();
+
   const value = {
     // 상태
     role, fbUser, authReady, familyCode, currentPage, setCurrentPage,
@@ -1115,7 +1143,7 @@ export function AppProvider({ children }) {
     SCH, FREE, wkS, todayS, totS, goal, setGoal,
     hwData, hwLastData, hwPhotos, hwLastPhotos, hwExtra,
     hwLog, hwPhotoUrls, arriveData, todayKey,
-    childPhotoUrl, bonusLog, message, toastMsg, rwI, setRwI,
+    childPhotoUrl, bonusLog, rewardLog, thisWeekReward, message, toastMsg, rwI, setRwI,
     // 저장
     saveSCH, saveScores, saveHwData, saveHwLog, saveArrive, saveHwPhotos, saveHwExtra,
     // Auth

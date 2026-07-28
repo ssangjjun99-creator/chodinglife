@@ -4,7 +4,7 @@ import { RW, getMonday, mondayStr } from '../utils/scheduleUtils';
 const WEEKDAY_KR = ['일','월','화','수','목','금','토'];
 
 export default function PointsPage() {
-  const { wkS, todayS, goal, hwLog, bonusLog, arriveData, todayKey, rwI, setRwI, toast, pickReward } = useApp();
+  const { wkS, todayS, goal, hwLog, bonusLog, arriveData, todayKey, rwI, setRwI, toast, pickReward, thisWeekReward } = useApp();
 
   const pct = Math.min(100, Math.round((wkS/goal)*100));
 
@@ -139,8 +139,9 @@ export default function PointsPage() {
             {[0,1,2].map(i => {
               const rw = RW[rwI[i]];
               const locked = wkS < goal;
+              const picked = rw.n === thisWeekReward;
               return (
-                <div key={i} className={`rwc${locked?' lk':''}`} onClick={()=>pickRw(i)}>
+                <div key={i} className={`rwc${locked?' lk':''}${picked?' sel':''}`} onClick={()=>pickRw(i)}>
                   {locked && <div className="rwlk">🔒</div>}
                   <div style={{fontSize:22}}>{rw.e}</div>
                   <div style={{fontSize:10,fontWeight:700,color:'#1a3a5c',marginTop:2}}>{rw.n}</div>

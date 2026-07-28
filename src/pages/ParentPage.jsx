@@ -17,6 +17,7 @@ export default function ParentPage() {
     hwData, arriveData, todayKey,
     parentTab, setParentTab,
     message, sendMessage, deleteMessage,
+    thisWeekReward,
   } = useApp();
 
   const [emailV, setEmailV] = useState('');
@@ -178,6 +179,11 @@ export default function ParentPage() {
               <div style={{background:'rgba(255,255,255,0.25)',borderRadius:5,height:6,overflow:'hidden'}}>
                 <div style={{height:'100%',borderRadius:5,background:'#fff',transition:'width 0.8s',width:`${pct}%`}} />
               </div>
+              {thisWeekReward && (
+                <div style={{marginTop:8,fontSize:12,color:'#fff',opacity:0.9}}>
+                  이번 주 선택: {RW.find(r=>r.n===thisWeekReward)?.e || ''} {thisWeekReward}
+                </div>
+              )}
             </div>
 
             {/* 응원메시지 */}
