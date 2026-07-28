@@ -113,7 +113,7 @@ exports.onArriveNotify = onDocumentWritten(
     await Promise.all(
       parentTokens.map(async (token) => {
         try {
-          await admin.messaging().send({ token, notification: { title, body } });
+          await admin.messaging().send({ token, notification: { title, body }, data: { goto: "parent_status" } });
         } catch (e) {
           console.error(`[onArriveNotify] 발송 실패 (${token.slice(0, 12)}...):`, e.code || e.message);
           if (
@@ -143,7 +143,7 @@ exports.onArriveNotify = onDocumentWritten(
 
 // ── 아래 5개 함수 공통: fcm_tokens에서 role 토큰 수집 → 발송 → 만료 토큰 정리
 // (onArriveNotify와 동일한 로직을 헬퍼로 추출한 것일 뿐, onArriveNotify 자체는 건드리지 않음)
-async function sendToTokens(familyCode, roleFilter, title, body, logPrefix) {
+async function sendToTokens(familyCode, roleFilter, title, body, logPrefix, goto) {
   const tokensRef = admin.firestore().doc(`families/${familyCode}/data/fcm_tokens`);
   const tokensSnap = await tokensRef.get();
   if (!tokensSnap.exists) {
@@ -164,7 +164,7 @@ async function sendToTokens(familyCode, roleFilter, title, body, logPrefix) {
   await Promise.all(
     targetTokens.map(async (token) => {
       try {
-        await admin.messaging().send({ token, notification: { title, body } });
+        await admin.messaging().send({ token, notification: { title, body }, data: { goto } });
       } catch (e) {
         console.error(`[${logPrefix}] 발송 실패 (${token.slice(0, 12)}...):`, e.code || e.message);
         if (
@@ -214,7 +214,8 @@ exports.onMessageNotify = onDocumentWritten(
       "child",
       "응원 메시지 💌",
       "엄마아빠의 응원이 도착했어요!",
-      "onMessageNotify"
+      "onMessageNotify",
+      "home"
     );
   }
 );
@@ -268,7 +269,8 @@ exports.onHwCheckNotify = onDocumentWritten(
       "parent",
       "숙제 제출 ✏️",
       "숙제를 완료했어요! 확인해주세요",
-      "onHwCheckNotify"
+      "onHwCheckNotify",
+      "parent_homework"
     );
   }
 );
@@ -297,7 +299,8 @@ exports.onHwPhotoNotify = onDocumentWritten(
       "parent",
       "숙제 사진 📷",
       "숙제 사진을 올렸어요!",
-      "onHwPhotoNotify"
+      "onHwPhotoNotify",
+      "parent_homework"
     );
   }
 );
@@ -338,7 +341,8 @@ exports.onHwApproveNotify = onDocumentWritten(
       "child",
       "숙제 승인 ⭐",
       "숙제 +20점! 참 잘했어요",
-      "onHwApproveNotify"
+      "onHwApproveNotify",
+      "homework"
     );
   }
 );
@@ -383,7 +387,8 @@ exports.onBonusNotify = onDocumentWritten(
       "child",
       "보너스 포인트 🌟",
       `보너스 +${pts}점을 받았어요!`,
-      "onBonusNotify"
+      "onBonusNotify",
+      "points"
     );
   }
 );

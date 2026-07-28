@@ -20,7 +20,7 @@ import ParentPage from './pages/ParentPage';
 import WordGamePage from './pages/WordGamePage';
 
 function AppInner() {
-  const { role, fbUser, authReady, familyCode, currentPage, setCurrentPage, SCH } = useApp();
+  const { role, fbUser, authReady, familyCode, currentPage, setCurrentPage, setParentTab, SCH } = useApp();
 
   const currentPageRef = useRef(currentPage);
   currentPageRef.current = currentPage;
@@ -34,6 +34,7 @@ function AppInner() {
   const schRef = useRef(SCH);
   schRef.current = SCH;
   const pendingGotoRef = useRef(null);
+  const pendingFcmGotoRef = useRef(null);
   const fcmSaveSeqRef = useRef(0);
 
   // FCM 토큰을 families/{familyCode}/data/fcm_tokens에 저장 (토큰을 키로 써서 중복 자동 방지)
@@ -160,6 +161,37 @@ function AppInner() {
     });
     return () => { listenerPromise.then(l => l.remove()); };
   }, [tryFlushPendingGoto]);
+
+  // FCM 알림 탭 시 화면 이동 (data.goto 기반). 로컬 알림용 pendingGotoRef/tryFlushPendingGoto는
+  // 'arrive' 단일 목적지 + 아이모드 전용으로 고정돼 있어 그대로 재사용할 수 없어 별도 ref로 분리.
+  // 콜드 스타트 대비(준비 안 됐으면 보관 후 재시도)하는 구조만 동일하게 따라감.
+  const tryFlushPendingFcmGoto = useCallback(() => {
+    if (!pendingFcmGotoRef.current) return;
+    if (!authReady) return; // 아직 준비 안 됨 — authReady가 바뀔 때 다시 시도됨
+    const goto = pendingFcmGotoRef.current;
+    switch (goto) {
+      case 'parent_status': setCurrentPage('parent'); setParentTab('ov'); break;
+      case 'home': setCurrentPage('main'); break;
+      case 'parent_homework': setCurrentPage('homework'); break;
+      case 'homework': setCurrentPage('homework'); break;
+      case 'points': setCurrentPage('points'); break;
+      default: break;
+    }
+    pendingFcmGotoRef.current = null;
+  }, [authReady, setCurrentPage, setParentTab]);
+
+  useEffect(() => { tryFlushPendingFcmGoto(); }, [tryFlushPendingFcmGoto]);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listenerPromise = PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+      const goto = action.notification && action.notification.data && action.notification.data.goto;
+      if (!goto) return; // data.goto 없는(구버전) 알림은 무시
+      pendingFcmGotoRef.current = goto;
+      tryFlushPendingFcmGoto();
+    });
+    return () => { listenerPromise.then(l => l.remove()); };
+  }, [tryFlushPendingFcmGoto]);
 
   // Firebase 인증 초기화 대기
   if(!authReady) {
