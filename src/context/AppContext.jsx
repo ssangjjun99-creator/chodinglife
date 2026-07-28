@@ -221,6 +221,25 @@ export function AppProvider({ children }) {
                 }
               }
             } catch(e) { console.log('점수 동기화 실패:', e.message); }
+
+            // 로컬 주간목표/보상설정 → Firebase 동기화 (기존에 로컬에만 있던 값 1회 복구)
+            try {
+              const profileRef = doc(db, 'families', code, 'data', 'profile');
+              const profileSnap = await getDoc(profileRef);
+              const profileData = profileSnap.exists() ? profileSnap.data() : {};
+              const updates = {};
+              if(typeof profileData.goal !== 'number') {
+                updates.goal = parseInt(localStorage.getItem('chodinglife_goal') || '100');
+              }
+              if(!profileData.rwI) {
+                const localRwI = localStorage.getItem('chodinglife_rw');
+                if(localRwI) updates.rwI = localRwI;
+              }
+              if(Object.keys(updates).length > 0) {
+                updates.updatedAt = new Date().toISOString();
+                await setDoc(profileRef, updates, { merge: true });
+              }
+            } catch(e) { console.log('주간목표/보상설정 동기화 실패:', e.message); }
           }
         } catch(e) {
           let code = localStorage.getItem('chodinglife_familycode');
@@ -541,13 +560,25 @@ export function AppProvider({ children }) {
       }
     }, (e) => { console.warn('[onSnapshot] hwlog 권한 오류:', e.code); }));
 
-    // 아이 프로필 사진 감지
+    // 아이 프로필 사진 + 주간 목표 + 보상 설정 감지
     const profileRef = doc(db, 'families', familyCode, 'data', 'profile');
     unsubs.push(onSnapshot(profileRef, (snap) => {
       if(snap.exists() && snap.data().childPhotoUrl) {
         setChildPhotoUrl(snap.data().childPhotoUrl);
       } else {
         setChildPhotoUrl(null);
+      }
+      if(snap.exists() && typeof snap.data().goal === 'number') {
+        const g = snap.data().goal;
+        setGoal(g);
+        localStorage.setItem('chodinglife_goal', String(g));
+      }
+      if(snap.exists() && snap.data().rwI) {
+        try {
+          const loadedRwI = JSON.parse(snap.data().rwI);
+          setRwI(loadedRwI);
+          localStorage.setItem('chodinglife_rw', JSON.stringify(loadedRwI));
+        } catch(e) { console.warn('[onSnapshot] profile rwI 파싱 실패:', e.message); }
       }
     }, (e) => { console.warn('[onSnapshot] profile 권한 오류:', e.code); }));
 

@@ -4,7 +4,7 @@ import { RW, hasBell, H } from '../utils/scheduleUtils';
 import { CHEER_MSGS } from '../utils/cheerMsgs';
 import WeeklyGrid from '../components/WeeklyGrid';
 import { db, storage } from '../firebase/config';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { ref, listAll, deleteObject } from 'firebase/storage';
 
 export default function ParentPage() {
@@ -82,12 +82,22 @@ export default function ParentPage() {
     newRwI[i] = (newRwI[i]+1) % RW.length;
     setRwI(newRwI);
     localStorage.setItem('chodinglife_rw', JSON.stringify(newRwI));
+    if(familyCode) {
+      const profileRef = doc(db, 'families', familyCode, 'data', 'profile');
+      setDoc(profileRef, { rwI: JSON.stringify(newRwI), updatedAt: new Date().toISOString() }, { merge: true })
+        .catch(e => console.log('보상 설정 Firestore 저장 실패:', e.message));
+    }
   };
 
   const adjGoal = (delta) => {
     const newGoal = Math.max(10, goal+delta);
     setGoal(newGoal);
     localStorage.setItem('chodinglife_goal', String(newGoal));
+    if(familyCode) {
+      const profileRef = doc(db, 'families', familyCode, 'data', 'profile');
+      setDoc(profileRef, { goal: newGoal, updatedAt: new Date().toISOString() }, { merge: true })
+        .catch(e => console.log('주간 목표 Firestore 저장 실패:', e.message));
+    }
   };
 
   const resetDataBtn = async () => {
