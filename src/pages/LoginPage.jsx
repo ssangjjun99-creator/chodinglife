@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useApp } from '../context/AppContext';
 
 const ICON_BASE = (process.env.PUBLIC_URL || '') + '/icons/';
@@ -20,6 +21,16 @@ export default function LoginPage() {
 
   const handleKeyDown = (e) => {
     if(e.key === 'Enter') handleSubmit();
+  };
+
+  // 외부 링크(개인정보처리방침)를 앱 웹뷰 밖(시스템 브라우저)으로 열기 (ParentPage.jsx와 동일 방식)
+  const openPrivacyPolicy = () => {
+    const url = 'https://ssangjjun99-creator.github.io/chodinglife/privacy.html';
+    if (Capacitor.isNativePlatform()) {
+      window.location.href = url;
+    } else {
+      window.open(url, '_blank');
+    }
   };
 
   return (
@@ -104,6 +115,14 @@ export default function LoginPage() {
             onClick={resetRole}
             style={{background:'none',border:'none',color:'#8aaac8',fontSize:12,cursor:'pointer',fontFamily:'inherit',textDecoration:'underline'}}
           >← 역할 선택으로 돌아가기</button>
+        </div>
+
+        {/* 개인정보처리방침 */}
+        <div style={{textAlign:'center',marginTop:14}}>
+          <button
+            onClick={openPrivacyPolicy}
+            style={{background:'none',border:'none',color:'#b0c8d8',fontSize:11,cursor:'pointer',fontFamily:'inherit',textDecoration:'underline'}}
+          >개인정보처리방침</button>
         </div>
       </div>
     </div>

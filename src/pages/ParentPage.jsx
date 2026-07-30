@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useApp } from '../context/AppContext';
 import { RW, hasBell, H } from '../utils/scheduleUtils';
 import { CHEER_MSGS } from '../utils/cheerMsgs';
@@ -147,6 +148,17 @@ export default function ParentPage() {
     setTimeout(() => window.location.reload(), 800);
   };
 
+  // 외부 링크(개인정보처리방침)를 앱 웹뷰 밖(시스템 브라우저)으로 열기
+  // 네이티브: Capacitor 기본 동작(다른 호스트로의 네비게이션은 자동으로 외부 브라우저 Intent로 처리)을 그대로 이용
+  // 웹: 새 탭으로 열어 앱 화면을 벗어나지 않게 함
+  const openPrivacyPolicy = () => {
+    const url = 'https://ssangjjun99-creator.github.io/chodinglife/privacy.html';
+    if (Capacitor.isNativePlatform()) {
+      window.location.href = url;
+    } else {
+      window.open(url, '_blank');
+    }
+  };
 
   return (
     <div className="page" id="page-parent">
@@ -375,6 +387,7 @@ export default function ParentPage() {
               <div className="ch"><span className="ci">⚙️</span><span className="ct">기타</span></div>
               <div className="sti" onClick={()=>toast('GPS 설정 준비중!')}><div className="stib" style={{background:'#e8faf0'}}>📍</div><div style={{flex:1}}><div className="stin">GPS 장소 설정</div><div className="stis">학교·학원·집 위치 등록</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
               <div className="sti" onClick={()=>toast('알림 설정 준비중!')}><div className="stib" style={{background:'#fff8e8'}}>🔔</div><div style={{flex:1}}><div className="stin">알림 설정</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
+              <div className="sti" onClick={openPrivacyPolicy}><div className="stib" style={{background:'#f0f8ff'}}>📄</div><div style={{flex:1}}><div className="stin">개인정보처리방침</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
               <div className="sti" onClick={resetDataBtn}><div className="stib" style={{background:'#fff0f0'}}>🗑️</div><div style={{flex:1}}><div className="stin" style={{color:'#1a3a5c'}}>데이터 초기화</div><div className="stis">숙제·포인트·스케줄 전체 리셋 (로그인 유지)</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
               <div className="sti" onClick={doLogout}><div className="stib" style={{background:'#fff0f0'}}>🚪</div><div style={{flex:1}}><div className="stin" style={{color:'#1a3a5c'}}>로그아웃</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
             </div>
