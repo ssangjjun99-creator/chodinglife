@@ -681,7 +681,7 @@ export function AppProvider({ children }) {
         await setDoc(scoresRef, {
           weekPts: wk, todayPts: today, totalPts: tot,
           updatedAt: new Date().toISOString()
-        });
+        }, { merge: true });
       } catch(e) { console.log('포인트 저장 실패:', e.message); }
     }
   }, [fbUser, familyCode, role]);
