@@ -222,7 +222,7 @@ export function AppProvider({ children }) {
                     todayPts: localScores.today || 0,
                     totalPts: localScores.tot || 0,
                     updatedAt: new Date().toISOString()
-                  });
+                  }, { merge: true });
                 }
               }
             } catch(e) { console.log('점수 동기화 실패:', e.message); }
@@ -730,7 +730,7 @@ export function AppProvider({ children }) {
         await setDoc(arriveRef, {
           arriveData: JSON.stringify(newData),
           updatedAt: new Date().toISOString()
-        });
+        }, { merge: true });
       } catch(e) { console.log('도착 Firestore 저장 실패:', e.message); }
     }
   }, [familyCode]);
@@ -1017,7 +1017,7 @@ export function AppProvider({ children }) {
     });
   }, [saveScores]);
 
-  const bonus = useCallback((name, pts) => {
+  const bonus = useCallback(async (name, pts) => {
     addScore(pts);
     const newLog = {...bonusLog, [Date.now()]: {name, pts, ts: Date.now()}};
     setBonusLog(newLog);
@@ -1025,7 +1025,7 @@ export function AppProvider({ children }) {
     if(familyCode) {
       try {
         const bonusRef = doc(db, 'families', familyCode, 'data', 'bonuslog');
-        setDoc(bonusRef, { bonusLog: JSON.stringify(newLog), updatedAt: new Date().toISOString() });
+        await setDoc(bonusRef, { bonusLog: JSON.stringify(newLog), updatedAt: new Date().toISOString() }, { merge: true });
       } catch(e) { console.log('보너스 Firestore 저장 실패:', e.message); }
     }
     toast(`🌟 ${name} +${pts}점!`);
