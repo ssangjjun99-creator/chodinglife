@@ -6,9 +6,13 @@ const ICON_BASE = (process.env.PUBLIC_URL || '') + '/icons/';
 export default function ChildSetupPage() {
   const { confirmChildCode, setCurrentPage, resetRole } = useApp();
   const [code, setCode] = useState('');
+  const [verifying, setVerifying] = useState(false);
 
-  const handleConfirm = () => {
-    const ok = confirmChildCode(code.trim().toUpperCase());
+  const handleConfirm = async () => {
+    if(verifying) return;
+    setVerifying(true);
+    const ok = await confirmChildCode(code.trim().toUpperCase());
+    setVerifying(false);
     if(ok) setCurrentPage('main');
   };
 
@@ -28,9 +32,10 @@ export default function ChildSetupPage() {
         />
         <button
           onClick={handleConfirm}
-          style={{width:'100%',padding:14,borderRadius:14,border:'none',background:'linear-gradient(135deg,#3a9bd5,#2ec4a9)',color:'white',fontSize:15,fontWeight:800,cursor:'pointer',fontFamily:'inherit',marginBottom:12}}
+          disabled={verifying}
+          style={{width:'100%',padding:14,borderRadius:14,border:'none',background:'linear-gradient(135deg,#3a9bd5,#2ec4a9)',color:'white',fontSize:15,fontWeight:800,cursor:verifying?'default':'pointer',fontFamily:'inherit',marginBottom:12,opacity:verifying?0.7:1}}
         >
-          🔗 연동하기
+          {verifying ? '확인 중...' : '🔗 연동하기'}
         </button>
         <div onClick={resetRole} style={{fontSize:12,color:'#8aaac8',cursor:'pointer'}}>← 부모님이세요?</div>
       </div>

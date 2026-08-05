@@ -203,6 +203,11 @@ export function AppProvider({ children }) {
               displayName: user.displayName || '사용자',
               createdAt: new Date().toISOString()
             }, { merge: true });
+            // 가족코드 발급 직후 profile 문서를 미리 찍어둠 — 아이 코드 검증(getDoc)이
+            // "이 코드로 실제 가족이 존재하는지" 판단하는 기준 문서라, 화면에 코드가
+            // 노출되기 전에 미리 만들어 레이스를 차단함
+            const newFamilyProfileRef = doc(db, 'families', code, 'data', 'profile');
+            await setDoc(newFamilyProfileRef, { createdAt: new Date().toISOString() }, { merge: true });
           }
           const prevCode = localStorage.getItem('chodinglife_familycode');
           if(prevCode && prevCode !== code) resetFamilyDataCache();
@@ -971,8 +976,19 @@ export function AppProvider({ children }) {
     navigator.clipboard.writeText(code).then(() => toast('코드 복사됨! 📋'));
   }, [familyCode, toast]);
 
-  const confirmChildCode = useCallback((code) => {
+  const confirmChildCode = useCallback(async (code) => {
     if(code.length !== 6) { toast('6자리 코드를 입력해주세요!'); return false; }
+    try {
+      const profileRef = doc(db, 'families', code, 'data', 'profile');
+      const profileSnap = await getDoc(profileRef);
+      if(!profileSnap.exists()) {
+        toast('코드를 다시 확인해주세요 😅');
+        return false;
+      }
+    } catch(e) {
+      toast('인터넷 연결을 확인하고 다시 시도해주세요');
+      return false;
+    }
     const prevCode = localStorage.getItem('chodinglife_familycode');
     if(prevCode && prevCode !== code) resetFamilyDataCache();
     localStorage.setItem('chodinglife_role', 'child');
