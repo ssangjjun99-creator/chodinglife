@@ -2,8 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import {
-  onAuthStateChanged, signOut, signInWithPopup, signInWithCredential, signInWithCustomToken, GoogleAuthProvider, OAuthProvider,
-  createUserWithEmailAndPassword, signInWithEmailAndPassword
+  onAuthStateChanged, signOut, signInWithPopup, signInWithCredential, signInWithCustomToken, GoogleAuthProvider, OAuthProvider
 } from 'firebase/auth';
 import {
   doc, setDoc, getDoc, onSnapshot, deleteDoc
@@ -473,12 +472,16 @@ export function AppProvider({ children }) {
       if(snap.exists()) {
         const data = snap.data();
         if(data.SCH) {
-          const newSCH = JSON.parse(data.SCH);
-          setSCH(prev => { const m = {...prev,...newSCH}; localStorage.setItem('chodinglife_sch_v1',JSON.stringify(m)); return m; });
+          try {
+            const newSCH = JSON.parse(data.SCH);
+            setSCH(prev => { const m = {...prev,...newSCH}; localStorage.setItem('chodinglife_sch_v1',JSON.stringify(m)); return m; });
+          } catch(e) { console.log('[onSnapshot] schedule SCH 파싱 실패:', e.message); }
         }
         if(data.FREE) {
-          const newFREE = JSON.parse(data.FREE);
-          setFREE(prev => { const m = {...prev,...newFREE}; localStorage.setItem('chodinglife_free_v1',JSON.stringify(m)); return m; });
+          try {
+            const newFREE = JSON.parse(data.FREE);
+            setFREE(prev => { const m = {...prev,...newFREE}; localStorage.setItem('chodinglife_free_v1',JSON.stringify(m)); return m; });
+          } catch(e) { console.log('[onSnapshot] schedule FREE 파싱 실패:', e.message); }
         }
       } else {
         // 새 가족코드인데 스케줄 문서가 아직 없는 경우 — 이전 창고의 스케줄이 화면에 남지 않도록 기본 스케줄로 표시
@@ -500,23 +503,25 @@ export function AppProvider({ children }) {
           // 아직 새 주로 리셋되기 전(지난주 도장)인 원격 데이터 — 이번주 버킷에 섞이지 않도록 병합 건너뜀
           return;
         }
-        const loaded = JSON.parse(snap.data().hwData);
-        const remoteTime = snap.data().updatedAt || '';
-        const localTime = localStorage.getItem('chodinglife_hw_updated') || '';
-        if(remoteTime > localTime) {
-          setHwData(prev => {
-            const merged = {...prev};
-            Object.keys(loaded).forEach(k => {
-              if(!merged[k]) merged[k] = {};
-              Object.keys(loaded[k]).forEach(ds => {
-                merged[k][ds] = {...(merged[k][ds]||{}), ...loaded[k][ds]};
+        try {
+          const loaded = JSON.parse(snap.data().hwData);
+          const remoteTime = snap.data().updatedAt || '';
+          const localTime = localStorage.getItem('chodinglife_hw_updated') || '';
+          if(remoteTime > localTime) {
+            setHwData(prev => {
+              const merged = {...prev};
+              Object.keys(loaded).forEach(k => {
+                if(!merged[k]) merged[k] = {};
+                Object.keys(loaded[k]).forEach(ds => {
+                  merged[k][ds] = {...(merged[k][ds]||{}), ...loaded[k][ds]};
+                });
               });
+              localStorage.setItem('chodinglife_hw_current', JSON.stringify(merged));
+              localStorage.setItem('chodinglife_hw_updated', remoteTime);
+              return merged;
             });
-            localStorage.setItem('chodinglife_hw_current', JSON.stringify(merged));
-            localStorage.setItem('chodinglife_hw_updated', remoteTime);
-            return merged;
-          });
-        }
+          }
+        } catch(e) { console.log('[onSnapshot] homework hwData 파싱 실패:', e.message); }
       } else {
         // 초기화(문서 삭제) 등으로 문서가 없어진 경우 — 병합을 거치지 않고 바로 비움
         setHwData({});
@@ -859,35 +864,6 @@ export function AppProvider({ children }) {
   }, [hwLastPhotos, hwPhotoUrlsLast]);
 
   // ── Auth 함수들
-  const doEmailLogin = useCallback(async (email, pw) => {
-    try {
-      await signInWithEmailAndPassword(auth, email, pw);
-      localStorage.setItem('chodinglife_role', 'parent');
-      setRole('parent');
-      toast('✅ 로그인 완료!');
-      return true;
-    } catch(e) {
-      if(e.code === 'auth/user-not-found') toast('등록되지 않은 이메일이에요!');
-      else if(e.code === 'auth/wrong-password') toast('비밀번호가 틀렸어요!');
-      else if(e.code === 'auth/invalid-credential') toast('이메일 또는 비밀번호가 틀렸어요!');
-      else toast('로그인 실패 😢 다시 시도해주세요');
-      return false;
-    }
-  }, [toast]);
-
-  const doEmailSignup = useCallback(async (email, pw) => {
-    try {
-      await createUserWithEmailAndPassword(auth, email, pw);
-      toast('✅ 회원가입 완료!');
-      return true;
-    } catch(e) {
-      if(e.code === 'auth/email-already-in-use') toast('이미 사용중인 이메일이에요!');
-      else if(e.code === 'auth/invalid-email') toast('이메일 형식이 올바르지 않아요!');
-      else toast('회원가입 실패 😢 다시 시도해주세요');
-      return false;
-    }
-  }, [toast]);
-
   const doGoogleLogin = useCallback(async () => {
     try {
       if(Capacitor.isNativePlatform()) {
@@ -914,29 +890,40 @@ export function AppProvider({ children }) {
   const doKakaoLogin = useCallback(async () => {
     try {
       if(Capacitor.isNativePlatform()) {
-        await FirebaseAuthentication.signInWithOpenIdConnect({ providerId: 'oidc.oidc.kakao' });
-        let nativeIdToken;
+        // 릴리스 빌드 첫 시도가 "missing initial state"로 실패하고 재시도하면 성공하는
+        // 네이티브 OIDC redirect 플로우 특성 때문에, 실패 시 동일 시퀀스로 1회만 자동 재시도
+        const runNativeKakaoSignIn = async () => {
+          await FirebaseAuthentication.signInWithOpenIdConnect({ providerId: 'oidc.oidc.kakao' });
+          let nativeIdToken;
+          try {
+            const idTokenResult = await FirebaseAuthentication.getIdToken();
+            nativeIdToken = idTokenResult.token;
+          } catch(e) {
+            console.log('[Kakao] 네이티브 idToken 획득 실패', e.code, e.message);
+            throw e;
+          }
+          let customToken;
+          try {
+            const callable = httpsCallable(functions, 'exchangeKakaoToken');
+            const res = await callable({ idToken: nativeIdToken });
+            customToken = res.data?.customToken;
+          } catch(e) {
+            console.log('[Kakao] exchangeKakaoToken 호출 실패', e.code, e.message);
+            throw e;
+          }
+          try {
+            await signInWithCustomToken(auth, customToken);
+          } catch(e) {
+            console.log('[Kakao] signInWithCustomToken 실패', e.code, e.message);
+            throw e;
+          }
+        };
         try {
-          const idTokenResult = await FirebaseAuthentication.getIdToken();
-          nativeIdToken = idTokenResult.token;
+          await runNativeKakaoSignIn();
         } catch(e) {
-          console.log('[Kakao] 네이티브 idToken 획득 실패', e.code, e.message);
-          throw e;
-        }
-        let customToken;
-        try {
-          const callable = httpsCallable(functions, 'exchangeKakaoToken');
-          const res = await callable({ idToken: nativeIdToken });
-          customToken = res.data?.customToken;
-        } catch(e) {
-          console.log('[Kakao] exchangeKakaoToken 호출 실패', e.code, e.message);
-          throw e;
-        }
-        try {
-          await signInWithCustomToken(auth, customToken);
-        } catch(e) {
-          console.log('[Kakao] signInWithCustomToken 실패', e.code, e.message);
-          throw e;
+          console.log('[Kakao] 첫 시도 실패, 1회 재시도', e.code, e.message);
+          toast('로그인 다시 시도 중...');
+          await runNativeKakaoSignIn();
         }
       } else {
         const provider = new OAuthProvider('oidc.oidc.kakao');
@@ -1163,7 +1150,7 @@ export function AppProvider({ children }) {
     // 저장
     saveSCH, saveScores, saveHwData, saveHwLog, saveArrive, saveHwPhotos, saveHwExtra,
     // Auth
-    doEmailLogin, doEmailSignup, doGoogleLogin, doKakaoLogin, doLogout,
+    doGoogleLogin, doKakaoLogin, doLogout,
     selectRole, resetRole, copyFamilyCode, confirmChildCode,
     // 액션
     toast, addScore, subtractScore, bonus, pickReward, sendMessage, deleteMessage, parentApproveHw,

@@ -193,42 +193,52 @@ function AppInner() {
     return () => { listenerPromise.then(l => l.remove()); };
   }, [tryFlushPendingFcmGoto]);
 
-  // Firebase 인증 초기화 대기
-  if(!authReady) {
-    return (
-      <div className="page" style={{alignItems:'center',justifyContent:'center'}}>
-        <div style={{textAlign:'center'}}>
-          <div style={{fontSize:48,marginBottom:12}}>🌟</div>
-          <div style={{fontSize:16,color:'#5aaac8',fontWeight:700}}>불러오는 중...</div>
+  // 역할 확정 전 화면(로딩/역할선택/로그인/아이코드입력)에서도 토스트가 보이도록,
+  // 기존 얼리 리턴 분기는 그대로 두고 내부 함수로 감싼 뒤 Toast와 함께 렌더링
+  const renderBody = () => {
+    // Firebase 인증 초기화 대기
+    if(!authReady) {
+      return (
+        <div className="page" style={{alignItems:'center',justifyContent:'center'}}>
+          <div style={{textAlign:'center'}}>
+            <div style={{fontSize:48,marginBottom:12}}>🌟</div>
+            <div style={{fontSize:16,color:'#5aaac8',fontWeight:700}}>불러오는 중...</div>
+          </div>
         </div>
-      </div>
+      );
+    }
+
+    // 역할 미설정 → 역할 선택 화면
+    if(!role) return <RoleSelectPage />;
+
+    // 부모인데 로그인 안 됨 → 로그인 페이지
+    if(role === 'parent' && !fbUser) return <LoginPage />;
+
+    // 아이인데 familyCode 없음 → 코드 입력 화면
+    if(role === 'child') {
+      const linked = localStorage.getItem('chodinglife_linkedcode');
+      if(!linked) return <ChildSetupPage />;
+    }
+
+    const hide = (name) => ({ display: currentPage === name ? undefined : 'none' });
+
+    return (
+      <>
+        <div style={hide('main')}><HomePage /></div>
+        <div style={hide('points')}><PointsPage /></div>
+        <div style={hide('checkin')}><CheckinPage /></div>
+        <div style={hide('homework')}><HomeworkPage /></div>
+        <div style={hide('parent')}><ParentPage /></div>
+        {currentPage === 'wordgame' && <WordGamePage />}
+        {currentPage !== 'wordgame' && <Navbar />}
+      </>
     );
-  }
-
-  // 역할 미설정 → 역할 선택 화면
-  if(!role) return <RoleSelectPage />;
-
-  // 부모인데 로그인 안 됨 → 로그인 페이지
-  if(role === 'parent' && !fbUser) return <LoginPage />;
-
-  // 아이인데 familyCode 없음 → 코드 입력 화면
-  if(role === 'child') {
-    const linked = localStorage.getItem('chodinglife_linkedcode');
-    if(!linked) return <ChildSetupPage />;
-  }
-
-  const hide = (name) => ({ display: currentPage === name ? undefined : 'none' });
+  };
 
   return (
     <>
       <Toast />
-      <div style={hide('main')}><HomePage /></div>
-      <div style={hide('points')}><PointsPage /></div>
-      <div style={hide('checkin')}><CheckinPage /></div>
-      <div style={hide('homework')}><HomeworkPage /></div>
-      <div style={hide('parent')}><ParentPage /></div>
-      {currentPage === 'wordgame' && <WordGamePage />}
-      {currentPage !== 'wordgame' && <Navbar />}
+      {renderBody()}
     </>
   );
 }

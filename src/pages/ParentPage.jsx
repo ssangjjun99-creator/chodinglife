@@ -11,7 +11,7 @@ import { ref, listAll, deleteObject } from 'firebase/storage';
 export default function ParentPage() {
   const {
     fbUser, familyCode, wkS, todayS, goal, setGoal,
-    doEmailLogin, doEmailSignup, doGoogleLogin, doLogout,
+    doLogout,
     copyFamilyCode, bonus, rwI, setRwI,
     childPhotoUrl, uploadChildPhoto, removeChildPhoto,
     toast, saveSCH, SCH, FREE,
@@ -21,8 +21,6 @@ export default function ParentPage() {
     thisWeekReward,
   } = useApp();
 
-  const [emailV, setEmailV] = useState('');
-  const [pwV, setPwV] = useState('');
   const [showChildInput, setShowChildInput] = useState(false);
   const [childCodeInput, setChildCodeInput] = useState('');
   const [msgInput, setMsgInput] = useState('');
@@ -48,15 +46,6 @@ export default function ParentPage() {
   const curD = nowD.getDay()===0 ? 6 : nowD.getDay()-1;
   const todayArriveItems = (SCH[curD]||[]).filter(hasBell);
   const todayArrive = arriveData[todayKey]||{};
-
-  const handleLogin = async () => {
-    const ok = await doEmailLogin(emailV, pwV);
-    if(ok) { setEmailV(''); setPwV(''); }
-  };
-
-  const handleSignup = async () => {
-    await doEmailSignup(emailV, pwV);
-  };
 
   const handleChildPhotoSelect = () => {
     const inp = document.createElement('input');
@@ -338,48 +327,31 @@ export default function ParentPage() {
             {/* 아이랑 연동하기 */}
             <div className="card" style={{marginTop:10}}>
               <div className="ch"><span className="ci">🔗</span><span className="ct">아이랑 연동하기</span></div>
-              {!fbUser
-                ? <div>
-                    <div style={{fontSize:12,color:'#5aaac8',marginBottom:12,lineHeight:1.5}}>로그인 후 가족코드를 만들어<br/>지율이 폰과 실시간으로 연동하세요! 📱</div>
-                    <input value={emailV} onChange={e=>setEmailV(e.target.value)} type="email" placeholder="이메일 주소" style={{width:'100%',padding:10,borderRadius:10,border:'1.5px solid #d4eaf5',fontSize:13,fontFamily:'inherit',outline:'none',marginBottom:8,boxSizing:'border-box'}} />
-                    <input value={pwV} onChange={e=>setPwV(e.target.value)} type="password" placeholder="비밀번호 (6자리 이상)" style={{width:'100%',padding:10,borderRadius:10,border:'1.5px solid #d4eaf5',fontSize:13,fontFamily:'inherit',outline:'none',marginBottom:8,boxSizing:'border-box'}} />
-                    <div style={{display:'flex',gap:8,marginBottom:10}}>
-                      <button onClick={handleLogin} style={{flex:1,padding:11,borderRadius:10,border:'none',background:'linear-gradient(135deg,#3a9bd5,#2ec4a9)',color:'white',fontSize:13,fontWeight:800,cursor:'pointer',fontFamily:'inherit'}}>로그인</button>
-                      <button onClick={handleSignup} style={{flex:1,padding:11,borderRadius:10,border:'1.5px solid #3a9bd5',background:'white',color:'#3a9bd5',fontSize:13,fontWeight:800,cursor:'pointer',fontFamily:'inherit'}}>회원가입</button>
-                    </div>
-                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
-                      <div style={{flex:1,height:1,background:'#d4eaf5'}} /><div style={{fontSize:11,color:'#8aaac8'}}>또는</div><div style={{flex:1,height:1,background:'#d4eaf5'}} />
-                    </div>
-                    <button onClick={doGoogleLogin} style={{width:'100%',padding:11,borderRadius:10,border:'1.5px solid #d4eaf5',background:'white',color:'#444',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-                      <span style={{fontSize:16}}>G</span> 구글로 로그인하기
-                    </button>
+              <div>
+                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+                  <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#3a9bd5,#2ec4a9)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>👩</div>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:800,color:'#0d5a7a'}}>{fbUser?.displayName || '사용자'}</div>
+                    <div style={{fontSize:11,color:'#5aaac8'}}>{fbUser?.email || ''}</div>
                   </div>
-                : <div>
-                    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
-                      <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#3a9bd5,#2ec4a9)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>👩</div>
-                      <div>
-                        <div style={{fontSize:13,fontWeight:800,color:'#0d5a7a'}}>{fbUser.displayName||'사용자'}</div>
-                        <div style={{fontSize:11,color:'#5aaac8'}}>{fbUser.email}</div>
-                      </div>
-                      <button onClick={doLogout} style={{marginLeft:'auto',padding:'5px 10px',borderRadius:8,border:'1.5px solid #d4eaf5',background:'#fff',color:'#8aaac8',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>로그아웃</button>
-                    </div>
-                    <div style={{background:'#f0f8ff',borderRadius:12,padding:12,marginBottom:10}}>
-                      <div style={{fontSize:11,color:'#5aaac8',marginBottom:4,fontWeight:700}}>내 가족코드</div>
-                      <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        <div style={{fontSize:22,fontWeight:800,color:'#3a9bd5',letterSpacing:4}}>{familyCode||'------'}</div>
-                        <button onClick={copyFamilyCode} style={{padding:'5px 10px',borderRadius:8,border:'none',background:'#3a9bd5',color:'white',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>복사</button>
-                      </div>
-                      <div style={{fontSize:11,color:'#8aaac8',marginTop:4}}>이 코드를 지율이 폰에 입력하면 연동돼요!</div>
-                    </div>
-                    <button onClick={()=>setShowChildInput(!showChildInput)} style={{width:'100%',padding:10,borderRadius:12,border:'1.5px solid #3a9bd5',background:'#fff',color:'#3a9bd5',fontSize:13,fontWeight:800,cursor:'pointer',fontFamily:'inherit'}}>👧 아이 코드 입력하기</button>
-                    {showChildInput && (
-                      <div style={{marginTop:10}}>
-                        <input value={childCodeInput} onChange={e=>setChildCodeInput(e.target.value.toUpperCase())} type="text" maxLength={6} placeholder="6자리 코드 입력" style={{width:'100%',padding:10,borderRadius:10,border:'1.5px solid #d4eaf5',fontSize:16,textAlign:'center',letterSpacing:4,fontWeight:800,color:'#0d5a7a',fontFamily:'inherit',outline:'none'}} />
-                        <button onClick={connectChildCode} style={{width:'100%',marginTop:8,padding:10,borderRadius:12,border:'none',background:'linear-gradient(135deg,#2bc87a,#1aaa60)',color:'white',fontSize:13,fontWeight:800,cursor:'pointer',fontFamily:'inherit'}}>연동하기</button>
-                      </div>
-                    )}
+                  <button onClick={doLogout} style={{marginLeft:'auto',padding:'5px 10px',borderRadius:8,border:'1.5px solid #d4eaf5',background:'#fff',color:'#8aaac8',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>로그아웃</button>
+                </div>
+                <div style={{background:'#f0f8ff',borderRadius:12,padding:12,marginBottom:10}}>
+                  <div style={{fontSize:11,color:'#5aaac8',marginBottom:4,fontWeight:700}}>내 가족코드</div>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{fontSize:22,fontWeight:800,color:'#3a9bd5',letterSpacing:4}}>{familyCode||'------'}</div>
+                    <button onClick={copyFamilyCode} style={{padding:'5px 10px',borderRadius:8,border:'none',background:'#3a9bd5',color:'white',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>복사</button>
                   </div>
-              }
+                  <div style={{fontSize:11,color:'#8aaac8',marginTop:4}}>이 코드를 지율이 폰에 입력하면 연동돼요!</div>
+                </div>
+                <button onClick={()=>setShowChildInput(!showChildInput)} style={{width:'100%',padding:10,borderRadius:12,border:'1.5px solid #3a9bd5',background:'#fff',color:'#3a9bd5',fontSize:13,fontWeight:800,cursor:'pointer',fontFamily:'inherit'}}>👧 아이 코드 입력하기</button>
+                {showChildInput && (
+                  <div style={{marginTop:10}}>
+                    <input value={childCodeInput} onChange={e=>setChildCodeInput(e.target.value.toUpperCase())} type="text" maxLength={6} placeholder="6자리 코드 입력" style={{width:'100%',padding:10,borderRadius:10,border:'1.5px solid #d4eaf5',fontSize:16,textAlign:'center',letterSpacing:4,fontWeight:800,color:'#0d5a7a',fontFamily:'inherit',outline:'none'}} />
+                    <button onClick={connectChildCode} style={{width:'100%',marginTop:8,padding:10,borderRadius:12,border:'none',background:'linear-gradient(135deg,#2bc87a,#1aaa60)',color:'white',fontSize:13,fontWeight:800,cursor:'pointer',fontFamily:'inherit'}}>연동하기</button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 기타 */}

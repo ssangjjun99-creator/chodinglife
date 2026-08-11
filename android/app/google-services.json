@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "1079803403295-eseh9o0lvrqgekkprthi084c1cifks5g.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.chodinglife.app",
+            "certificate_hash": "2925f0ac1c7b254ecfe478fe26f7f456d7e3f984"
+          }
+        },
+        {
+          "client_id": "1079803403295-tfvt4pcpgc8eas30m0ikrhjt7pgtpetr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.chodinglife.app",
+            "certificate_hash": "3ab38e1930315a7a5aaad26bbf68833a19250d22"
+          }
+        },
+        {
           "client_id": "1079803403295-sqvb6c3j8f8g08omiug6i8cco1bcn6d5.apps.googleusercontent.com",
           "client_type": 3
         }
