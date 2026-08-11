@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { useApp } from '../context/AppContext';
 import PieChart from '../components/PieChart';
 import ChildSettingsModal from '../components/ChildSettingsModal';
@@ -19,6 +22,50 @@ export default function HomePage() {
   const lastDayRef = useRef(curD);
   const lastApRef = useRef(curAP);
   const manualApRef = useRef(false);
+  const [exactAlarmGranted, setExactAlarmGranted] = useState(true);
+
+  // 정확한 알람 권한 상태 확인 — 실패 시 배너를 띄우지 않음(권한 상태를 모를 때 겁주지 않기)
+  const checkExactAlarm = async () => {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      const status = await LocalNotifications.checkExactNotificationSetting();
+      setExactAlarmGranted(status.exact_alarm === 'granted');
+    } catch(e) {
+      // 확인 실패 — 배너 표시 안 함
+    }
+  };
+
+  // 아이 화면 진입 시 + 앱 재개(resume)/탭 다시 보임(visible) 시 재확인
+  // (설정 화면 다녀오면 배너가 사라지게) — AppContext.jsx의 리스너와는 별개로 HomePage 전용으로 둠
+  useEffect(() => {
+    if (role !== 'child') return;
+    checkExactAlarm();
+    let resumeListenerPromise = null;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') checkExactAlarm();
+    };
+    if (Capacitor.isNativePlatform()) {
+      resumeListenerPromise = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) checkExactAlarm();
+      });
+    } else {
+      document.addEventListener('visibilitychange', handleVisibility);
+    }
+    return () => {
+      if (resumeListenerPromise) resumeListenerPromise.then(h => h.remove());
+      else document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [role]);
+
+  const handleTurnOnExactAlarm = async () => {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      const status = await LocalNotifications.changeExactNotificationSetting();
+      setExactAlarmGranted(status.exact_alarm === 'granted');
+    } catch(e) {
+      // 실패 시 조용히 무시
+    }
+  };
 
   useEffect(() => {
     const tick = () => {
@@ -115,11 +162,30 @@ export default function HomePage() {
           </div>
           <div className="clock-date">{clockDate}</div>
         </div>
-        <span className="topbar-txt" onClick={secretReset} style={{cursor:'pointer',padding:8}}>✦</span>
+        <span className="topbar-txt" style={{cursor:'pointer',padding:8}}>✦</span>
       </div>
 
       {showChildSettings && (
         <ChildSettingsModal onClose={() => setShowChildSettings(false)} />
+      )}
+
+      {role === 'child' && Capacitor.isNativePlatform() && !exactAlarmGranted && (
+        <div style={{
+          margin:'0 16px 10px',
+          display:'flex', alignItems:'center', gap:10,
+          background:'#fff4e0', border:'1.5px solid #ffdca0', borderRadius:14,
+          padding:'10px 14px',
+        }}>
+          <span style={{fontSize:20, flexShrink:0}}>⏰</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:12,fontWeight:800,color:'#a86400'}}>알림이 제시간에 오지 않을 수 있어요</div>
+            <div style={{fontSize:11,color:'#c08030'}}>부모님이 설정에서 한 번만 켜주세요</div>
+          </div>
+          <button
+            onClick={handleTurnOnExactAlarm}
+            style={{padding:'7px 12px',borderRadius:10,border:'none',background:'#ffb020',color:'#fff',fontSize:12,fontWeight:800,cursor:'pointer',fontFamily:'inherit',flexShrink:0}}
+          >켜기</button>
+        </div>
       )}
 
       {/* overflow:hidden → chart-outer marginTop(14px) 붕괴 방지 → top 기준 확정 */}

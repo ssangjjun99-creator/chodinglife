@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { useApp } from '../context/AppContext';
 import { RW, hasBell, H } from '../utils/scheduleUtils';
 import { CHEER_MSGS } from '../utils/cheerMsgs';
@@ -24,6 +25,30 @@ export default function ParentPage() {
   const [showChildInput, setShowChildInput] = useState(false);
   const [childCodeInput, setChildCodeInput] = useState('');
   const [msgInput, setMsgInput] = useState('');
+  const [exactAlarmStatus, setExactAlarmStatus] = useState(null);
+
+  // 정확한 알람 권한 상태 확인 — 실패 시 상태를 표시하지 않음(권한 상태를 모를 때 겁주지 않기)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    (async () => {
+      try {
+        const status = await LocalNotifications.checkExactNotificationSetting();
+        setExactAlarmStatus(status.exact_alarm);
+      } catch(e) {
+        // 확인 실패 — 상태 표시 안 함
+      }
+    })();
+  }, []);
+
+  const handleToggleExactAlarm = async () => {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      const status = await LocalNotifications.changeExactNotificationSetting();
+      setExactAlarmStatus(status.exact_alarm);
+    } catch(e) {
+      // 실패 시 조용히 무시
+    }
+  };
   const pct = Math.min(100, Math.round((wkS/goal)*100));
 
   // 이번주 숙제 현황
@@ -344,6 +369,8 @@ export default function ParentPage() {
                   </div>
                   <div style={{fontSize:11,color:'#8aaac8',marginTop:4}}>이 코드를 지율이 폰에 입력하면 연동돼요!</div>
                 </div>
+                {false && (
+                <>
                 <button onClick={()=>setShowChildInput(!showChildInput)} style={{width:'100%',padding:10,borderRadius:12,border:'1.5px solid #3a9bd5',background:'#fff',color:'#3a9bd5',fontSize:13,fontWeight:800,cursor:'pointer',fontFamily:'inherit'}}>👧 아이 코드 입력하기</button>
                 {showChildInput && (
                   <div style={{marginTop:10}}>
@@ -351,14 +378,18 @@ export default function ParentPage() {
                     <button onClick={connectChildCode} style={{width:'100%',marginTop:8,padding:10,borderRadius:12,border:'none',background:'linear-gradient(135deg,#2bc87a,#1aaa60)',color:'white',fontSize:13,fontWeight:800,cursor:'pointer',fontFamily:'inherit'}}>연동하기</button>
                   </div>
                 )}
+                </>
+                )}
               </div>
             </div>
 
             {/* 기타 */}
             <div className="card" style={{marginTop:10,marginBottom:14}}>
               <div className="ch"><span className="ci">⚙️</span><span className="ct">기타</span></div>
+              {false && (
               <div className="sti" onClick={()=>toast('GPS 설정 준비중!')}><div className="stib" style={{background:'#e8faf0'}}>📍</div><div style={{flex:1}}><div className="stin">GPS 장소 설정</div><div className="stis">학교·학원·집 위치 등록</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
-              <div className="sti" onClick={()=>toast('알림 설정 준비중!')}><div className="stib" style={{background:'#fff8e8'}}>🔔</div><div style={{flex:1}}><div className="stin">알림 설정</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
+              )}
+              <div className="sti" onClick={handleToggleExactAlarm}><div className="stib" style={{background:'#fff8e8'}}>🔔</div><div style={{flex:1}}><div className="stin">알림 설정</div></div><div style={{fontSize:12,fontWeight:700,color:exactAlarmStatus==='granted'?'#2bc87a':'#e08000',marginRight:6}}>{exactAlarmStatus==='granted'?'켜짐':exactAlarmStatus?'꺼짐':''}</div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
               <div className="sti" onClick={openPrivacyPolicy}><div className="stib" style={{background:'#f0f8ff'}}>📄</div><div style={{flex:1}}><div className="stin">개인정보처리방침</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
               <div className="sti" onClick={resetDataBtn}><div className="stib" style={{background:'#fff0f0'}}>🗑️</div><div style={{flex:1}}><div className="stin" style={{color:'#1a3a5c'}}>데이터 초기화</div><div className="stis">숙제·포인트·스케줄 전체 리셋 (로그인 유지)</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
               <div className="sti" onClick={doLogout}><div className="stib" style={{background:'#fff0f0'}}>🚪</div><div style={{flex:1}}><div className="stin" style={{color:'#1a3a5c'}}>로그아웃</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>

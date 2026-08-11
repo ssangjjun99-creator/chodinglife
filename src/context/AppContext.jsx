@@ -12,6 +12,7 @@ import {
 } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
+import { CapacitorKakaoLogin } from '@team-lepisode/capacitor-kakao-login';
 import { auth, db, storage, googleProvider, functions } from '../firebase/config';
 import {
   makeDefaultSchedule, checkHwWeekReset, H, mondayStr, getMonday, HW_INFO,
@@ -893,29 +894,33 @@ export function AppProvider({ children }) {
         // 릴리스 빌드 첫 시도가 "missing initial state"로 실패하고 재시도하면 성공하는
         // 네이티브 OIDC redirect 플로우 특성 때문에, 실패 시 동일 시퀀스로 1회만 자동 재시도
         const runNativeKakaoSignIn = async () => {
-          await FirebaseAuthentication.signInWithOpenIdConnect({ providerId: 'oidc.oidc.kakao' });
-          let nativeIdToken;
-          try {
-            const idTokenResult = await FirebaseAuthentication.getIdToken();
-            nativeIdToken = idTokenResult.token;
-          } catch(e) {
-            console.log('[Kakao] 네이티브 idToken 획득 실패', e.code, e.message);
-            throw e;
-          }
-          let customToken;
-          try {
-            const callable = httpsCallable(functions, 'exchangeKakaoToken');
-            const res = await callable({ idToken: nativeIdToken });
-            customToken = res.data?.customToken;
-          } catch(e) {
-            console.log('[Kakao] exchangeKakaoToken 호출 실패', e.code, e.message);
-            throw e;
+          await CapacitorKakaoLogin.initialize({ appKey: 'da522ee02fd0fe01a844dc3720c88a65' });
+          const res = await CapacitorKakaoLogin.login();
+          if(!res.idToken) {
+            console.log('[Kakao] idToken 없음 - 카카오 콘솔 OIDC 확인 필요');
+            throw new Error('카카오 idToken을 받지 못했어요');
           }
           try {
-            await signInWithCustomToken(auth, customToken);
+            const provider = new OAuthProvider('oidc.oidc.kakao');
+            const credential = provider.credential({ idToken: res.idToken });
+            await signInWithCredential(auth, credential);
           } catch(e) {
-            console.log('[Kakao] signInWithCustomToken 실패', e.code, e.message);
-            throw e;
+            console.log('[Kakao] signInWithCredential 실패, customToken 폴백', e.code, e.message);
+            let customToken;
+            try {
+              const callable = httpsCallable(functions, 'exchangeKakaoToken');
+              const result = await callable({ idToken: res.idToken });
+              customToken = result.data?.customToken;
+            } catch(e2) {
+              console.log('[Kakao] exchangeKakaoToken 호출 실패', e2.code, e2.message);
+              throw e2;
+            }
+            try {
+              await signInWithCustomToken(auth, customToken);
+            } catch(e3) {
+              console.log('[Kakao] signInWithCustomToken 실패', e3.code, e3.message);
+              throw e3;
+            }
           }
         };
         try {
