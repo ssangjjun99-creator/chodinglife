@@ -15,6 +15,7 @@ dependencies {
     implementation project(':capacitor-local-notifications')
     implementation project(':capacitor-push-notifications')
     implementation project(':team-lepisode-capacitor-kakao-login')
+    implementation project(':capacitor-native-settings')
 
 }
 

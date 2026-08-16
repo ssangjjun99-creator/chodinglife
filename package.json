@@ -17,6 +17,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^13.5.0",
+    "capacitor-native-settings": "^8.2.0",
     "firebase": "^12.14.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -51,6 +52,7 @@
     ]
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "cross-env": "^10.1.0",
     "gh-pages": "^6.3.0",
     "sharp": "^0.35.1"

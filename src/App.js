@@ -6,7 +6,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from './firebase/config';
 import { useApp } from './context/AppContext';
-import { scheduleClassReminders, cancelClassReminders } from './utils/localNotify';
+import { scheduleClassReminders, cancelClassReminders, requestNotificationPermissionOnce } from './utils/localNotify';
 import Toast from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
@@ -92,13 +92,18 @@ function AppInner() {
     const recvListenerPromise = PushNotifications.addListener('pushNotificationReceived', (notification) => {
       console.log('[Push] 알림 수신:', notification);
     });
-    PushNotifications.requestPermissions().then((res) => {
-      if (res.receive === 'granted') {
-        PushNotifications.register();
-      } else {
-        console.log('[Push] 권한 거부/미승인:', res.receive);
-      }
-    });
+    requestNotificationPermissionOnce()
+      .then(() => PushNotifications.checkPermissions())
+      .then((res) => {
+        if (res.receive === 'granted') {
+          PushNotifications.register();
+        } else {
+          console.log('[Push] 권한 거부/미승인:', res.receive);
+        }
+      })
+      .catch((e) => {
+        console.log('[Push] 권한 요청 실패:', e.message);
+      });
     return () => {
       regListenerPromise.then(l => l.remove());
       recvListenerPromise.then(l => l.remove());

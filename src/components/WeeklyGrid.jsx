@@ -352,7 +352,7 @@ export default function WeeklyGrid() {
               <button onClick={()=>{setPopup(null);setSelCat(null);setCopySelect(false);}} aria-label="닫기"
                 style={{width:40,height:40,display:'flex',alignItems:'center',justifyContent:'center',border:'none',background:'transparent',color:'#8aaac8',fontSize:18,cursor:'pointer',flexShrink:0}}>✕</button>
             </div>
-            <div style={{overflowY:'auto',padding:'0 20px 20px'}}>
+            <div className="popup-scroll" style={{overflowY:'auto',padding:'0 24px 20px 20px'}}>
             <div style={{display:'flex',gap:8,marginBottom:12}}>
               <div style={{flex:1,textAlign:'center'}}>
                 <div style={{fontSize:10,color:'#8aaac8',marginBottom:4}}>시작</div>

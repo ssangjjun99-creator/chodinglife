@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { NativeSettings, AndroidSettings } from 'capacitor-native-settings';
 import { useApp } from '../context/AppContext';
 import PieChart from '../components/PieChart';
 import ChildSettingsModal from '../components/ChildSettingsModal';
@@ -9,7 +10,7 @@ import ChildSettingsModal from '../components/ChildSettingsModal';
 const BG_BASE = (process.env.PUBLIC_URL || '') + '/images/';
 
 export default function HomePage() {
-  const { SCH, childPhotoUrl, secretReset, role, setCurrentPage, setParentTab, message } = useApp();
+  const { SCH, childPhotoUrl, secretReset, role, setCurrentPage, setParentTab, message, toast } = useApp();
   const [showChildSettings, setShowChildSettings] = useState(false);
   const [clock, setClock] = useState('');
   const [clockDate, setClockDate] = useState('');
@@ -23,6 +24,7 @@ export default function HomePage() {
   const lastApRef = useRef(curAP);
   const manualApRef = useRef(false);
   const [exactAlarmGranted, setExactAlarmGranted] = useState(true);
+  const [notifPermGranted, setNotifPermGranted] = useState(true);
 
   // 정확한 알람 권한 상태 확인 — 실패 시 배너를 띄우지 않음(권한 상태를 모를 때 겁주지 않기)
   const checkExactAlarm = async () => {
@@ -35,18 +37,33 @@ export default function HomePage() {
     }
   };
 
-  // 아이 화면 진입 시 + 앱 재개(resume)/탭 다시 보임(visible) 시 재확인
+  // 알림 표시 권한(POST_NOTIFICATIONS) 상태 확인 — 실패 시 배너를 띄우지 않음
+  const checkNotifPerm = async () => {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      const status = await LocalNotifications.checkPermissions();
+      setNotifPermGranted(status.display === 'granted');
+    } catch(e) {
+      // 확인 실패 — 배너 표시 안 함
+    }
+  };
+
+  // 알림 표시 권한은 부모·아이 모드 공통으로 확인(배너 1순위), 정확한 알람은 아이 모드에서만(배너 2순위) —
+  // 앱 재개(resume)/탭 다시 보임(visible) 시에도 재확인해 단계가 자동으로 넘어가게 함
   // (설정 화면 다녀오면 배너가 사라지게) — AppContext.jsx의 리스너와는 별개로 HomePage 전용으로 둠
   useEffect(() => {
-    if (role !== 'child') return;
-    checkExactAlarm();
+    const recheck = () => {
+      checkNotifPerm();
+      if (role === 'child') checkExactAlarm();
+    };
+    recheck();
     let resumeListenerPromise = null;
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') checkExactAlarm();
+      if (document.visibilityState === 'visible') recheck();
     };
     if (Capacitor.isNativePlatform()) {
       resumeListenerPromise = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) checkExactAlarm();
+        if (isActive) recheck();
       });
     } else {
       document.addEventListener('visibilitychange', handleVisibility);
@@ -64,6 +81,27 @@ export default function HomePage() {
       setExactAlarmGranted(status.exact_alarm === 'granted');
     } catch(e) {
       // 실패 시 조용히 무시
+    }
+  };
+
+  // 알림 배너 "켜기" — 아직 완전 거부 전이면 팝업이 다시 뜸(전용 재요청 경로라 requestNotificationPermissionOnce 게이트는 거치지 않음)
+  // 그래도 granted가 아니면 앱 알림 설정 화면을 직접 열어줌(마지막 폴백은 toast 안내)
+  const handleTurnOnNotif = async () => {
+    if (!Capacitor.isNativePlatform()) return;
+    let granted = false;
+    try {
+      const status = await LocalNotifications.requestPermissions();
+      granted = status.display === 'granted';
+      setNotifPermGranted(granted);
+    } catch(e) {
+      // 요청 자체 실패 — 아래에서 설정 화면으로 폴백
+    }
+    if (!granted) {
+      try {
+        await NativeSettings.openAndroid({ option: AndroidSettings.AppNotification });
+      } catch(e) {
+        toast('설정 → 애플리케이션 → 초딩생활 → 알림 에서 켜주세요');
+      }
     }
   };
 
@@ -162,31 +200,39 @@ export default function HomePage() {
           </div>
           <div className="clock-date">{clockDate}</div>
         </div>
-        <span className="topbar-txt" style={{cursor:'pointer',padding:8}}>✦</span>
       </div>
 
       {showChildSettings && (
         <ChildSettingsModal onClose={() => setShowChildSettings(false)} />
       )}
 
-      {role === 'child' && Capacitor.isNativePlatform() && !exactAlarmGranted && (
-        <div style={{
-          margin:'0 16px 10px',
-          display:'flex', alignItems:'center', gap:10,
-          background:'#fff4e0', border:'1.5px solid #ffdca0', borderRadius:14,
-          padding:'10px 14px',
-        }}>
-          <span style={{fontSize:20, flexShrink:0}}>⏰</span>
-          <div style={{flex:1}}>
-            <div style={{fontSize:12,fontWeight:800,color:'#a86400'}}>알림이 제시간에 오지 않을 수 있어요</div>
-            <div style={{fontSize:11,color:'#c08030'}}>부모님이 설정에서 한 번만 켜주세요</div>
+      {/* 알림 배너 — 한 자리에 항상 1개만: 1) 알림 표시 권한(부모·아이 공통) 2) 정확한 알람(아이 전용) 3) 둘 다 충족 시 없음 */}
+      {Capacitor.isNativePlatform() && (() => {
+        const banner = !notifPermGranted
+          ? { icon:'🔔', title:'알림이 꺼져 있어요', sub:'학원·숙제 알림을 받으려면 켜주세요', onClick: handleTurnOnNotif }
+          : (role === 'child' && !exactAlarmGranted)
+          ? { icon:'⏰', title:'정확한 시간 알림이 꺼져 있어요', sub:"부모님이 '알람 및 리마인더'를 켜주세요", onClick: handleTurnOnExactAlarm }
+          : null;
+        if (!banner) return null;
+        return (
+          <div style={{
+            margin:'0 16px 10px',
+            display:'flex', alignItems:'center', gap:10,
+            background:'#fff4e0', border:'1.5px solid #ffdca0', borderRadius:14,
+            padding:'10px 14px',
+          }}>
+            <span style={{fontSize:20, flexShrink:0}}>{banner.icon}</span>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:800,color:'#a86400'}}>{banner.title}</div>
+              <div style={{fontSize:11,color:'#c08030'}}>{banner.sub}</div>
+            </div>
+            <button
+              onClick={banner.onClick}
+              style={{padding:'7px 12px',borderRadius:10,border:'none',background:'#ffb020',color:'#fff',fontSize:12,fontWeight:800,cursor:'pointer',fontFamily:'inherit',flexShrink:0}}
+            >켜기</button>
           </div>
-          <button
-            onClick={handleTurnOnExactAlarm}
-            style={{padding:'7px 12px',borderRadius:10,border:'none',background:'#ffb020',color:'#fff',fontSize:12,fontWeight:800,cursor:'pointer',fontFamily:'inherit',flexShrink:0}}
-          >켜기</button>
-        </div>
-      )}
+        );
+      })()}
 
       {/* overflow:hidden → chart-outer marginTop(14px) 붕괴 방지 → top 기준 확정 */}
       <div style={{position:'relative',width:'100%',overflow:'hidden'}}>

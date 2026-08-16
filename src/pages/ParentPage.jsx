@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { NativeSettings, AndroidSettings } from 'capacitor-native-settings';
 import { useApp } from '../context/AppContext';
 import { RW, hasBell, H } from '../utils/scheduleUtils';
 import { CHEER_MSGS } from '../utils/cheerMsgs';
@@ -25,28 +27,53 @@ export default function ParentPage() {
   const [showChildInput, setShowChildInput] = useState(false);
   const [childCodeInput, setChildCodeInput] = useState('');
   const [msgInput, setMsgInput] = useState('');
-  const [exactAlarmStatus, setExactAlarmStatus] = useState(null);
+  const [notifPermStatus, setNotifPermStatus] = useState(null);
 
-  // 정확한 알람 권한 상태 확인 — 실패 시 상태를 표시하지 않음(권한 상태를 모를 때 겁주지 않기)
+  // 알림 표시 권한(POST_NOTIFICATIONS) 상태 확인 — 실패 시 상태를 표시하지 않음
+  // (부모 폰 알림은 전부 서버 FCM이라 정확한 알람 상태는 이 화면과 무관 — 아이 모드 홈 배너 쪽에서만 다룸)
+  // 앱 재개(resume) 시에도 재확인해 표시가 갱신되게 함
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-    (async () => {
+    const checkNotifPerm = async () => {
       try {
-        const status = await LocalNotifications.checkExactNotificationSetting();
-        setExactAlarmStatus(status.exact_alarm);
+        const status = await LocalNotifications.checkPermissions();
+        setNotifPermStatus(status.display);
       } catch(e) {
         // 확인 실패 — 상태 표시 안 함
       }
-    })();
+    };
+    checkNotifPerm();
+    const resumeListenerPromise = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) checkNotifPerm();
+    });
+    return () => { resumeListenerPromise.then(h => h.remove()); };
   }, []);
 
-  const handleToggleExactAlarm = async () => {
+  // 알림 꺼짐 → 먼저 재요청, 그래도 안 되면 앱 알림 설정 화면 / 알림 켜짐 → 바로 설정 화면(거기서 끌 수 있게)
+  const handleTapNotifSetting = async () => {
     if (!Capacitor.isNativePlatform()) return;
+    if (notifPermStatus === 'granted') {
+      try {
+        await NativeSettings.openAndroid({ option: AndroidSettings.AppNotification });
+      } catch(e) {
+        toast('설정 → 애플리케이션 → 초딩생활 → 알림 에서 켜주세요');
+      }
+      return;
+    }
+    let granted = false;
     try {
-      const status = await LocalNotifications.changeExactNotificationSetting();
-      setExactAlarmStatus(status.exact_alarm);
+      const status = await LocalNotifications.requestPermissions();
+      granted = status.display === 'granted';
+      setNotifPermStatus(status.display);
     } catch(e) {
-      // 실패 시 조용히 무시
+      // 요청 자체 실패 — 아래에서 설정 화면으로 폴백
+    }
+    if (!granted) {
+      try {
+        await NativeSettings.openAndroid({ option: AndroidSettings.AppNotification });
+      } catch(e) {
+        toast('설정 → 애플리케이션 → 초딩생활 → 알림 에서 켜주세요');
+      }
     }
   };
   const pct = Math.min(100, Math.round((wkS/goal)*100));
@@ -389,10 +416,12 @@ export default function ParentPage() {
               {false && (
               <div className="sti" onClick={()=>toast('GPS 설정 준비중!')}><div className="stib" style={{background:'#e8faf0'}}>📍</div><div style={{flex:1}}><div className="stin">GPS 장소 설정</div><div className="stis">학교·학원·집 위치 등록</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
               )}
-              <div className="sti" onClick={handleToggleExactAlarm}><div className="stib" style={{background:'#fff8e8'}}>🔔</div><div style={{flex:1}}><div className="stin">알림 설정</div></div><div style={{fontSize:12,fontWeight:700,color:exactAlarmStatus==='granted'?'#2bc87a':'#e08000',marginRight:6}}>{exactAlarmStatus==='granted'?'켜짐':exactAlarmStatus?'꺼짐':''}</div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
+              <div className="sti" onClick={handleTapNotifSetting}><div className="stib" style={{background:'#fff8e8'}}>🔔</div><div style={{flex:1}}><div className="stin">알림 설정</div></div><div style={{fontSize:12,fontWeight:700,color:notifPermStatus==='granted'?'#2bc87a':'#e08000',marginRight:6}}>{!notifPermStatus?'':notifPermStatus==='granted'?'켜짐':'꺼짐'}</div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
               <div className="sti" onClick={openPrivacyPolicy}><div className="stib" style={{background:'#f0f8ff'}}>📄</div><div style={{flex:1}}><div className="stin">개인정보처리방침</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
               <div className="sti" onClick={resetDataBtn}><div className="stib" style={{background:'#fff0f0'}}>🗑️</div><div style={{flex:1}}><div className="stin" style={{color:'#1a3a5c'}}>데이터 초기화</div><div className="stis">숙제·포인트·스케줄 전체 리셋 (로그인 유지)</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
+              {false && (
               <div className="sti" onClick={doLogout}><div className="stib" style={{background:'#fff0f0'}}>🚪</div><div style={{flex:1}}><div className="stin" style={{color:'#1a3a5c'}}>로그아웃</div></div><div style={{fontSize:14,color:'#c0d4e0'}}>›</div></div>
+              )}
             </div>
           </div>
         )}

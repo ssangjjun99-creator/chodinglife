@@ -4,6 +4,42 @@ import { hasBell } from './scheduleUtils';
 
 const TEN_MIN_IN_HOURS = 1 / 6;
 
+// 안드로이드 13+에서 POST_NOTIFICATIONS는 Push/Local 알림이 공유하는 런타임 권한이라,
+// 둘이 거의 동시에 요청하면 시스템 권한 다이얼로그가 겹쳐 WebView 입력이 먹통이 될 수 있음.
+// 진행 중인 요청 Promise를 모듈 스코프에 하나만 두고 Push/Local 양쪽이 공유해서 한 번만 뜨게 함.
+// 이 게이트는 "앱 시작 시 자동으로 뜨는" 요청 전용 — 배너 "켜기" 등 사용자가 직접 누른 재요청은
+// 이 함수를 거치지 않고 LocalNotifications.requestPermissions()를 직접 호출하므로 이 제한을 받지 않음.
+let notifPermissionPromise = null;
+// 요청을 한 번이라도 시도했으면 true — 시간차 호출이 checkPermissions()에서 여전히 'prompt'를
+// 보더라도(다이얼로그가 사라졌다가 재확인되는 경우 등) 같은 앱 실행 중엔 다시 요청하지 않기 위한 기억값
+let hasRequestedNotifPermission = false;
+// 앱을 껐다 켜도 자동 요청은 최초 1회만 — 실제로 요청을 수행한 직후(결과와 무관하게) 저장
+const NOTIF_ASKED_KEY = 'chodinglife_notifAsked';
+
+export function requestNotificationPermissionOnce() {
+  if (notifPermissionPromise) return notifPermissionPromise;
+
+  notifPermissionPromise = (async () => {
+    try {
+      const status = await LocalNotifications.checkPermissions();
+      const alreadyAskedBefore = !!localStorage.getItem(NOTIF_ASKED_KEY);
+      if (!alreadyAskedBefore && !hasRequestedNotifPermission && (status.display === 'prompt' || status.display === 'prompt-with-rationale')) {
+        hasRequestedNotifPermission = true;
+        try {
+          return await LocalNotifications.requestPermissions();
+        } finally {
+          localStorage.setItem(NOTIF_ASKED_KEY, '1');
+        }
+      }
+      return status;
+    } finally {
+      notifPermissionPromise = null;
+    }
+  })();
+
+  return notifPermissionPromise;
+}
+
 // 스케줄의 요일 인덱스 계산: HomePage.jsx의 curD 공식과 동일 (0=월 ~ 6=일)
 function dayIndexOf(date) {
   const d = date.getDay();
@@ -59,7 +95,7 @@ export async function scheduleClassReminders(SCH) {
   }
 
   try {
-    const permRes = await LocalNotifications.requestPermissions();
+    const permRes = await requestNotificationPermissionOnce();
     if (permRes.display !== 'granted') {
       console.warn('[localNotify] 알림 권한이 거부됐어요');
       return;
