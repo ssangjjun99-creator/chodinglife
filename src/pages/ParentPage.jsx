@@ -367,7 +367,7 @@ export default function ParentPage() {
                     <div style={{fontSize:22,fontWeight:800,color:'#3a9bd5',letterSpacing:4}}>{familyCode||'------'}</div>
                     <button onClick={copyFamilyCode} style={{padding:'5px 10px',borderRadius:8,border:'none',background:'#3a9bd5',color:'white',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>복사</button>
                   </div>
-                  <div style={{fontSize:11,color:'#8aaac8',marginTop:4}}>이 코드를 지율이 폰에 입력하면 연동돼요!</div>
+                  <div style={{fontSize:11,color:'#8aaac8',marginTop:4}}>이 코드를 아이 폰에 입력하면 연동돼요!</div>
                 </div>
                 {false && (
                 <>

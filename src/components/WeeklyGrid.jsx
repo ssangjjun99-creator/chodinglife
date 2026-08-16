@@ -344,10 +344,15 @@ export default function WeeklyGrid() {
       {/* 블럭 추가/편집 팝업 */}
       {popup && (
         <div className="popup-overlay" onClick={e=>{if(e.target===e.currentTarget){setPopup(null);setSelCat(null);setCopySelect(false);}}}>
-          <div style={{background:'white',borderRadius:'22px 22px 0 0',padding:20,width:'100%',maxWidth:420,maxHeight:'calc(100vh - 80px)',overflowY:'auto',marginBottom:'calc(80px + env(safe-area-inset-bottom))'}}>
-            <div style={{fontSize:14,fontWeight:800,color:'#0d5a7a',marginBottom:12}}>
-              {popup.existing?'✏️ 일정 수정':'➕ 일정 추가'} · {DN[popup.dayIdx]}
+          <div style={{background:'white',borderRadius:'22px 22px 0 0',width:'100%',maxWidth:420,maxHeight:'100%',margin:'auto',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+            <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 20px 12px'}}>
+              <div style={{fontSize:14,fontWeight:800,color:'#0d5a7a'}}>
+                {popup.existing?'✏️ 일정 수정':'➕ 일정 추가'} · {DN[popup.dayIdx]}
+              </div>
+              <button onClick={()=>{setPopup(null);setSelCat(null);setCopySelect(false);}} aria-label="닫기"
+                style={{width:40,height:40,display:'flex',alignItems:'center',justifyContent:'center',border:'none',background:'transparent',color:'#8aaac8',fontSize:18,cursor:'pointer',flexShrink:0}}>✕</button>
             </div>
+            <div style={{overflowY:'auto',padding:'0 20px 20px'}}>
             <div style={{display:'flex',gap:8,marginBottom:12}}>
               <div style={{flex:1,textAlign:'center'}}>
                 <div style={{fontSize:10,color:'#8aaac8',marginBottom:4}}>시작</div>
@@ -403,11 +408,6 @@ export default function WeeklyGrid() {
                 <div style={{position:'absolute',top:2,left:bellOn?18:2,width:16,height:16,borderRadius:'50%',background:'white',transition:'left 0.2s',boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}} />
               </div>
             </div>
-            <div style={{display:'flex',gap:8}}>
-              {popup.existing&&<button onClick={deleteBlock} style={{flex:1,padding:12,borderRadius:13,background:'#fff0f0',color:'#e05555',fontSize:13,fontWeight:700,border:'none',cursor:'pointer',fontFamily:'inherit'}}>🗑️ 삭제</button>}
-              {popup.existing&&<button onClick={()=>setCopySelect(v=>!v)} style={{flex:1,padding:12,borderRadius:13,background:copySelect?'#e0f0ff':'#f0f8ff',color:'#3a9bd5',fontSize:13,fontWeight:700,border:'1.5px solid #d4eaf5',cursor:'pointer',fontFamily:'inherit'}}>📋 복사</button>}
-              <button onClick={confirmBlock} style={{flex:2,padding:12,borderRadius:13,background:'linear-gradient(135deg,#3a9bd5,#2ec4a9)',color:'white',fontSize:13,fontWeight:700,border:'none',cursor:'pointer',fontFamily:'inherit'}}>✓ 확인</button>
-            </div>
             {copySelect && popup.existing && (
               <div style={{marginTop:10,padding:'10px 12px',borderRadius:12,background:'#f4f9ff',border:'1.5px solid #d4eaf5'}}>
                 <div style={{fontSize:11,fontWeight:700,color:'#5a8aa8',marginBottom:8}}>어느 요일에 복사할까요?</div>
@@ -419,6 +419,12 @@ export default function WeeklyGrid() {
                 </div>
               </div>
             )}
+            </div>
+            <div style={{flexShrink:0,display:'flex',gap:8,padding:'0 20px 20px'}}>
+              {popup.existing&&<button onClick={deleteBlock} style={{flex:1,padding:12,borderRadius:13,background:'#fff0f0',color:'#e05555',fontSize:13,fontWeight:700,border:'none',cursor:'pointer',fontFamily:'inherit'}}>🗑️ 삭제</button>}
+              {popup.existing&&<button onClick={()=>setCopySelect(v=>!v)} style={{flex:1,padding:12,borderRadius:13,background:copySelect?'#e0f0ff':'#f0f8ff',color:'#3a9bd5',fontSize:13,fontWeight:700,border:'1.5px solid #d4eaf5',cursor:'pointer',fontFamily:'inherit'}}>📋 복사</button>}
+              <button onClick={confirmBlock} style={{flex:2,padding:12,borderRadius:13,background:'linear-gradient(135deg,#3a9bd5,#2ec4a9)',color:'white',fontSize:13,fontWeight:700,border:'none',cursor:'pointer',fontFamily:'inherit'}}>✓ 확인</button>
+            </div>
           </div>
         </div>
       )}

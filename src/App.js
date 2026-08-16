@@ -8,6 +8,7 @@ import { db } from './firebase/config';
 import { useApp } from './context/AppContext';
 import { scheduleClassReminders, cancelClassReminders } from './utils/localNotify';
 import Toast from './components/Toast';
+import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
 import RoleSelectPage from './pages/RoleSelectPage';
 import LoginPage from './pages/LoginPage';
@@ -236,10 +237,10 @@ function AppInner() {
   };
 
   return (
-    <>
+    <ErrorBoundary>
       <Toast />
       {renderBody()}
-    </>
+    </ErrorBoundary>
   );
 }
 

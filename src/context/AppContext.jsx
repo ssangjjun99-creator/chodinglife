@@ -220,15 +220,13 @@ export function AppProvider({ children }) {
               const scoresRef = doc(db, 'families', code, 'data', 'scores');
               const scoresSnap = await getDoc(scoresRef);
               if(!scoresSnap.exists() || (scoresSnap.data().totalPts || 0) === 0) {
-                const localScores = JSON.parse(localStorage.getItem('chodinglife_scores') || 'null');
-                if(localScores && (localScores.wk > 0 || localScores.tot > 0)) {
-                  await setDoc(scoresRef, {
-                    weekPts: localScores.wk || 0,
-                    todayPts: localScores.today || 0,
-                    totalPts: localScores.tot || 0,
-                    updatedAt: new Date().toISOString()
-                  }, { merge: true });
-                }
+                // 다른 가족코드의 로컬 캐시가 남아있을 수 있어 그 값을 그대로 끌어오지 않고 0에서 시작
+                await setDoc(scoresRef, {
+                  weekPts: 0,
+                  todayPts: 0,
+                  totalPts: 0,
+                  updatedAt: new Date().toISOString()
+                }, { merge: true });
               }
             } catch(e) { console.log('점수 동기화 실패:', e.message); }
 
@@ -312,7 +310,8 @@ export function AppProvider({ children }) {
       console.warn('[hwPhotoReset] Firestore 리셋 실패:', e.message);
     }
 
-    // 주간/일간 리셋: Firestore scores 초기화 (weekPts→주간, todayPts→일간, totalPts는 누적 유지). 다중 기기 가드 포함
+    // 주간/일간 리셋: Firestore scores 초기화 (weekPts→주간, todayPts→일간). totalPts는 이 리셋 대상이 아니지만
+    // addScore/subtractScore에서 증감되므로 순수 누적치는 아님(포인트 차감 시 totalPts도 함께 줄어듦). 다중 기기 가드 포함
     try {
       const thisMonday = mondayStr(getMonday(new Date()));
       const todayStr = localDateStr(new Date());

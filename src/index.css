@@ -80,7 +80,7 @@ body{background:#e8f4ff;}
 .sdel{font-size:14px;color:#e05555;cursor:pointer;padding:2px 4px;background:none;border:none;}
 .toast{position:fixed;top:58px;left:50%;transform:translateX(-50%);background:#0d3a52;color:#fff;padding:10px 20px;border-radius:20px;font-size:12px;font-weight:700;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;}
 .toast.show{opacity:1;}
-.popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center;}
+.popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 72px + 16px);}
 .popup-sheet{background:#fff;border-radius:22px 22px 0 0;padding:20px;width:100%;max-width:420px;}
 .tpi{flex:1;padding:10px;border-radius:11px;border:1.5px solid #d4eaf5;font-size:16px;text-align:center;outline:none;font-family:inherit;}
 .tp-ok{width:100%;padding:12px;border-radius:13px;background:linear-gradient(135deg,#3a9bd5,#2ec4a9);color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;margin-top:8px;}
