@@ -1,21 +1,25 @@
 {
   "files": {
-    "main.css": "/chodinglife/static/css/main.d613c83e.css",
-    "main.js": "/chodinglife/static/js/main.bf53d40f.js",
+    "main.css": "/chodinglife/static/css/main.e7120617.css",
+    "main.js": "/chodinglife/static/js/main.66cf2385.js",
     "static/js/551.6bca2eb4.chunk.js": "/chodinglife/static/js/551.6bca2eb4.chunk.js",
     "static/js/640.5d44dced.chunk.js": "/chodinglife/static/js/640.5d44dced.chunk.js",
     "static/js/498.7e8dcbb1.chunk.js": "/chodinglife/static/js/498.7e8dcbb1.chunk.js",
+    "static/js/25.c4c7891e.chunk.js": "/chodinglife/static/js/25.c4c7891e.chunk.js",
+    "static/js/965.f3c3d74d.chunk.js": "/chodinglife/static/js/965.f3c3d74d.chunk.js",
     "static/js/8.1e3bcf9d.chunk.js": "/chodinglife/static/js/8.1e3bcf9d.chunk.js",
     "index.html": "/chodinglife/index.html",
-    "main.d613c83e.css.map": "/chodinglife/static/css/main.d613c83e.css.map",
-    "main.bf53d40f.js.map": "/chodinglife/static/js/main.bf53d40f.js.map",
+    "main.e7120617.css.map": "/chodinglife/static/css/main.e7120617.css.map",
+    "main.66cf2385.js.map": "/chodinglife/static/js/main.66cf2385.js.map",
     "551.6bca2eb4.chunk.js.map": "/chodinglife/static/js/551.6bca2eb4.chunk.js.map",
     "640.5d44dced.chunk.js.map": "/chodinglife/static/js/640.5d44dced.chunk.js.map",
     "498.7e8dcbb1.chunk.js.map": "/chodinglife/static/js/498.7e8dcbb1.chunk.js.map",
+    "25.c4c7891e.chunk.js.map": "/chodinglife/static/js/25.c4c7891e.chunk.js.map",
+    "965.f3c3d74d.chunk.js.map": "/chodinglife/static/js/965.f3c3d74d.chunk.js.map",
     "8.1e3bcf9d.chunk.js.map": "/chodinglife/static/js/8.1e3bcf9d.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.d613c83e.css",
-    "static/js/main.bf53d40f.js"
+    "static/css/main.e7120617.css",
+    "static/js/main.66cf2385.js"
   ]
 }

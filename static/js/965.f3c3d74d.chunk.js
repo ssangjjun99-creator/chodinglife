@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkchodinglife_react=self.webpackChunkchodinglife_react||[]).push([[965],{346(e,r,n){n.d(r,{NativeSettingsWeb:()=>t});var o=n(403);class t extends o.E_{async open(){return new Promise((e,r)=>{r(new Error("Not implemented for web."))})}async openAndroid(){return new Promise((e,r)=>{r(new Error("Not implemented for web."))})}async openIOS(){return new Promise((e,r)=>{r(new Error("Not implemented for web."))})}}}}]);
+//# sourceMappingURL=965.f3c3d74d.chunk.js.map
