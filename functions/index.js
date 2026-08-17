@@ -21,7 +21,7 @@ exports.translateWord = onCall(
     }
 
     try {
-      console.log("[translateWord] 번역 요청:", text);
+      console.log("[translateWord] 번역 요청 수신, 길이:", text.length);
       const response = await axios.post(
         "https://papago.apigw.ntruss.com/nmt/v1/translation",
         `source=en&target=ko&text=${encodeURIComponent(text)}`,
@@ -33,13 +33,15 @@ exports.translateWord = onCall(
           }
         }
       );
-      console.log("[translateWord] Papago 응답:", JSON.stringify(response.data));
+      console.log("[translateWord] Papago 응답 수신 성공");
       return { translated: response.data.message.result.translatedText };
     } catch (error) {
       console.error("[translateWord] 오류:", error.message);
       if (error.response) {
         console.error("[translateWord] Papago HTTP 상태:", error.response.status);
-        console.error("[translateWord] Papago 응답 바디:", JSON.stringify(error.response.data));
+        const errBody = error.response.data || {};
+        const errInfo = errBody.error || errBody;
+        console.error("[translateWord] Papago 오류 코드:", errInfo.errorCode, "/ 메시지:", errInfo.errorMessage);
       }
       throw new HttpsError("internal", "번역 실패: " + error.message);
     }
