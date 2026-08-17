@@ -29,18 +29,18 @@ export default function LoginPage() {
         {/* 카카오 로그인 */}
         <button
           onClick={doKakaoLogin}
-          style={{width:'100%',padding:13,borderRadius:13,border:'none',background:'#FEE500',color:'#3A2929',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit',marginBottom:10}}
+          style={{width:'100%',background:'transparent',border:'none',padding:0,cursor:'pointer',marginBottom:10,display:'block'}}
         >
-          카카오로 시작하기
+          <img src={ICON_BASE + 'kakao_login.png'} alt="카카오 로그인" style={{width:'100%',height:'auto',display:'block'}} />
         </button>
 
         {/* 구글 로그인 */}
         <button
           onClick={doGoogleLogin}
-          style={{width:'100%',padding:13,borderRadius:13,border:'1.5px solid #d4eaf5',background:'white',color:'#444',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:10,boxShadow:'0 2px 8px rgba(0,0,0,0.06)',marginBottom:36}}
+          style={{width:'100%',aspectRatio:'600 / 90',background:'#FFFFFF',border:'1px solid #747775',borderRadius:13,padding:0,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:10,marginBottom:36}}
         >
-          <span style={{fontSize:18,fontWeight:900,color:'#4285F4'}}>G</span>
-          구글로 시작하기
+          <img src={ICON_BASE + 'google_g.svg'} alt="Google 계정으로 로그인" style={{height:'38%',width:'auto',display:'block'}} />
+          <span style={{fontSize:15,fontWeight:500,color:'#1F1F1F'}}>Google 계정으로 로그인</span>
         </button>
 
         {/* 뒤로가기 */}
