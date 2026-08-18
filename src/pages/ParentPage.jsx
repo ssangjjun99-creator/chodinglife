@@ -352,7 +352,7 @@ export default function ParentPage() {
                   <div key={i} className="rwc" onClick={()=>cycReward(i)}>
                     <div style={{fontSize:22}}>{RW[rwI[i]].e}</div>
                     <div style={{fontSize:10,fontWeight:700,color:'#1a3a5c',marginTop:2}}>{RW[rwI[i]].n}</div>
-                    <div style={{fontSize:9,color:'#8aaac8',marginTop:1}}>탭해서 변���</div>
+                    <div style={{fontSize:9,color:'#8aaac8',marginTop:1}}>탭해서 변경</div>
                   </div>
                 ))}
               </div>
